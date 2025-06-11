@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Заказ №{{ order.id }}{% endblock %}
+{% block content %}
+<div class="container mt-5">
+    <h2>Детали заказа №{{ order.id }}</h2>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <p><strong>Дата создания:</strong> {{ order.created_at|date:"d E Y г., H:i" }}</p>
+            <p><strong>Статус:</strong> {{ order.get_status_display }}</p>
+            <p><strong>Способ доставки:</strong> {{ order.get_delivery_type_display }}</p>
+            <p><strong>Способ оплаты:</strong> {{ order.get_payment_type_display }}</p>
+            <p><strong>Имя:</strong> {{ order.name }}</p>
+
+            {% if order.phone %}
+                <p><strong>Телефон:</strong> {{ order.phone }}</p>
+            {% endif %}
+
+            {% if order.email %}
+                <p><strong>Email:</strong> {{ order.email }}</p>
+            {% endif %}
+
+            {% if order.delivery_type == 'courier' %}
+                {% if order.address %}
+                    <p><strong>Адрес доставки:</strong> {{ order.address }}</p>
+                {% endif %}
+                {% if order.delivery_date %}
+                    <p><strong>Желаемая дата доставки:</strong> {{ order.delivery_date|date:"d E Y" }}</p>
+                {% endif %}
+                {% if order.delivery_time %}
+                    <p><strong>Время доставки:</strong> {{ order.delivery_time|time:"H:i" }}</p>
+                {% endif %}
+            {% elif order.delivery_type == 'pickup' %}
+                {% if order.pickup_point %}
+                    <p><strong>Пункт самовывоза:</strong> {{ order.get_pickup_point_display }}</p>
+                {% else %}
+                    <p><strong>Пункт самовывоза:</strong> Не указан</p>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+    <h4>Товары в заказе</h4>
+    <table class="table table-bordered mb-4">
+        <thead>
+            <tr>
+                <th>Товар</th>
+                <th>Цена за единицу</th>
+                <th>Количество</th>
+                <th>Сумма</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in order_items %}
+            <tr>
+                <td>{{ item.product.name }}</td>
+                <td>{{ item.price }} ₽</td>
+                <td>{{ item.quantity }}</td>
+                <td>{{ item.total }} ₽</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h4>Итого: {{ order.total_price }} ₽</h4>
+
+    <a href="{% url 'orders:order_list' %}" class="btn btn-secondary">Назад к списку заказов</a>
+</div>
+{% endblock %}

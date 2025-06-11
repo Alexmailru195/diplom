@@ -1,17 +1,42 @@
+# users/models.py
+
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.utils.translation import gettext_lazy as _
 
 
 class User(AbstractUser):
+    """
+    Расширенная модель пользователя
+    """
+
     ROLE_CHOICES = (
-        ('client', 'Клиент'),
-        ('manager', 'Менеджер точки'),
-        ('admin', 'Администратор'),
+        ('customer', 'Покупатель'),
+        ('manager', 'Менеджер'),
+        ('admin', 'Администратор')
     )
 
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='client')
-    phone = models.CharField(max_length=20, blank=True, null=True)
-    email = models.EmailField(unique=True)
+    role = models.CharField(
+        _('Роль'),
+        max_length=20,
+        choices=ROLE_CHOICES,
+        default='customer'
+    )
+
+    phone = models.CharField(_('Телефон'), max_length=30, blank=True, null=True)
+    avatar = models.ImageField(
+        _('Аватар'),
+        upload_to='avatars/',
+        blank=True,
+        null=True
+    )
+    date_joined = models.DateTimeField(_('Дата регистрации'), auto_now_add=True)
+    last_login = models.DateTimeField(_('Последний вход'), auto_now=True)
 
     def __str__(self):
         return self.username
+
+    class Meta:
+        verbose_name = "Пользователь"
+        verbose_name_plural = "Пользователи"
+        ordering = ['-date_joined']

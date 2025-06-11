@@ -1,12 +1,45 @@
 {% extends "base.html" %}
-{% block title %}Главная страница{% endblock %}
+{% block title %}Главная{% endblock %}
 {% block content %}
-<h2>Добро пожаловать в интернет-магазин!</h2>
+<div class="container mt-5">
+    <div class="row justify-content-center text-center">
+        <div class="col-md-8">
+            <h1 class="mb-4">Добро пожаловать в наш интернет-магазин!</h1>
+            <p class="lead mb-4">
+                Здесь вы найдете лучшие товары по выгодным ценам.
+                Оформляйте заказы быстро и удобно.
+            </p>
+            <a href="{% url 'products:product_list' %}" class="btn btn-primary btn-lg">Перейти к товарам</a>
+        </div>
+    </div>
 
-<ul>
-    <li><a href="{% url 'profile' %}">Профиль</a></li>
-    <li><a href="{% url 'products' %}">Каталог товаров</a></li>
-    <li><a href="{% url 'cart_view' %}">Корзина</a></li>
-    <li><a href="{% url 'logout' %}">Выход</a></li>
-</ul>
+    <!-- Блок с популярными товарами -->
+    <hr class="my-5">
+
+    <h2 class="mb-4">Популярные товары</h2>
+
+    <div class="row">
+        {% for product in popular_products %}
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                {% if product.images.all.0 %}
+                    <img src="{{ product.images.all.0.image.url }}" class="card-img-top" alt="{{ product.name }}">
+                {% else %}
+                    <img src="/static/images/no-image.png" class="card-img-top" alt="Нет изображения">
+                {% endif %}
+                <div class="card-body">
+                    <h5 class="card-title">{{ product.name }}</h5>
+                    <p class="card-text">{{ product.price }} ₽</p>
+                    <a href="{% url 'products:product_detail' product.id %}" class="btn btn-outline-primary btn-sm me-2">Подробнее</a>
+                    <a href="{% url 'cart:add_to_cart' product.id %}" class="btn btn-success btn-sm">Добавить в корзину</a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col">
+            <p>Нет популярных товаров.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
 {% endblock %}

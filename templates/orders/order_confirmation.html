@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Заказ оформлен{% endblock %}
+{% block content %}
+<h2>Заказ №{{ order.id }} успешно оформлен</h2>
+
+<p><strong>Статус:</strong> {{ order.get_status_display }}</p>
+<p><strong>Способ доставки:</strong> {{ order.get_delivery_type_display }}</p>
+<p><strong>Способ оплаты:</strong> {{ order.get_payment_type_display }}</p>
+<p><strong>Адрес:</strong> {{ order.address|default:"—" }}</p>
+
+<h4>Товары в заказе:</h4>
+<ul>
+    {% for item in order.order_items.all %}
+    <li>
+        {{ item.product.name }} — {{ item.quantity }} шт. × {{ item.price }} ₽
+    </li>
+    {% endfor %}
+</ul>
+
+<p><strong>Итого:</strong> {{ order.total_price }} ₽</p>
+
+<a href="{% url 'products' %}" class="btn btn-primary">Продолжить покупки</a>
+{% endblock %}

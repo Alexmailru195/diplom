@@ -1,10 +1,21 @@
-from django.urls import path
-from . import views
+# users/urls.py
 
+from django.urls import path
+from .views import (
+    register_view,
+    login_view,
+    profile_view,
+    logout_view,
+    change_password_view
+)
+
+app_name = 'users'
 
 urlpatterns = [
-    path('register/', views.register_view, name='register'),
-    path('login/', views.login_view, name='login'),
-    path('logout/', views.logout_view, name='logout'),
-    path('profile/', views.profile_view, name='profile'),
+    # === Django Template Views ===
+    path('register/', register_view, name='register'),
+    path('login/', login_view, name='login'),
+    path('logout/', logout_view, name='logout'),
+    path('profile/', profile_view, name='profile'),
+    path('change-password/', change_password_view, name='change_password'),
 ]

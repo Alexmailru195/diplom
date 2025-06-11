@@ -1,11 +1,60 @@
 {% extends "base.html" %}
-{% block title %}Зарегистрироваться{% endblock %}
+{% block title %}Регистрация{% endblock %}
 {% block content %}
-<h2>Создать аккаунт</h2>
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-success">Зарегистрироваться</button>
-</form>
-<p>Уже есть аккаунт? <a href="{% url 'login' %}">Войдите</a></p>
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <h3 class="mb-4">Создайте новый аккаунт</h3>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <form method="post">
+                {% csrf_token %}
+
+                <!-- Имя пользователя -->
+                <div class="mb-3">
+                    <label for="id_username" class="form-label">Имя пользователя</label>
+                    <input type="text" name="username" id="id_username"
+                           class="form-control" required autofocus />
+                    <small class="form-text text-muted">Используйте только буквы, цифры и подчеркивания.</small>
+                </div>
+
+                <!-- Email -->
+                <div class="mb-3">
+                    <label for="id_email" class="form-label">Email</label>
+                    <input type="email" name="email" id="id_email" class="form-control" required />
+                </div>
+
+                <!-- Пароль -->
+                <div class="mb-3">
+                    <label for="id_password1" class="form-label">Пароль</label>
+                    <input type="password" name="password1" id="id_password1" class="form-control" required />
+                    <small class="form-text text-muted">Введите надёжный пароль.</small>
+                </div>
+
+                <!-- Подтверждение пароля -->
+                <div class="mb-3">
+                    <label for="id_password2" class="form-label">Подтвердите пароль</label>
+                    <input type="password" name="password2" id="id_password2" class="form-control" required />
+                    <small class="form-text text-muted">Повторите пароль.</small>
+                </div>
+
+                <!-- Кнопка регистрации -->
+                <button type="submit" class="btn btn-primary w-100">Зарегистрироваться</button>
+            </form>
+
+            <!-- Ссылка на вход -->
+            <p class="mt-3">
+                Уже зарегистрированы?
+                <a href="{% url 'users:login' %}" class="text-decoration-none">Войдите</a>
+            </p>
+        </div>
+    </div>
+</div>
 {% endblock %}

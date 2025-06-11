@@ -1,14 +1,88 @@
 {% extends "base.html" %}
 {% block title %}Профиль{% endblock %}
 {% block content %}
-<h2>Профиль пользователя</h2>
-<ul>
-    <li><strong>Имя:</strong> {{ request.user.username }}</li>
-    <li><strong>Email:</strong> {{ request.user.email }}</li>
-    <li><strong>Роль:</strong> {{ request.user.get_role_display }}</li>
-    {% if request.user.phone %}
-        <li><strong>Телефон:</strong> {{ request.user.phone }}</li>
-    {% endif %}
-</ul>
-<a href="{% url 'logout' %}" class="btn btn-danger">Выход</a>
+<div class="container mt-5">
+    <div class="row">
+        <!-- Левая колонка: информация о пользователе -->
+        <div class="col-md-4 mb-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    {% if user.avatar %}
+                        <img src="{{ user.avatar.url }}" alt="Аватар" class="rounded-circle mb-3" width="120" height="120">
+                    {% else %}
+                        <img src="/static/images/default_avatar.png" alt="Стандартный аватар" class="rounded-circle mb-3" width="120" height="120">
+                    {% endif %}
+                    <h5>{{ user.get_full_name|default:user.username }}</h5>
+                    <p class="text-muted">{{ user.email }}</p>
+                    <p>Роль: <strong>{{ user.get_role_display }}</strong></p>
+                </div>
+            </div>
+
+            <ul class="list-group mt-3">
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <a href="{% url 'users:profile' %}" class="text-decoration-none">Профиль</a>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <a href="{% url 'users:change_password' %}" class="text-decoration-none">Сменить пароль</a>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <a href="{% url 'orders:order_list' %}" class="text-decoration-none">Мои заказы</a>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <a href="{% url 'logout' %}" class="text-decoration-none">Выход</a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Правая колонка: форма профиля -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    Редактировать профиль
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="id_username" class="form-label">Имя пользователя</label>
+                            <input type="text" name="username" id="id_username"
+                                   class="form-control" value="{{ user.username }}" disabled />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_first_name" class="form-label">Имя</label>
+                            <input type="text" name="first_name" id="id_first_name"
+                                   class="form-control" value="{{ user.first_name }}" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_last_name" class="form-label">Фамилия</label>
+                            <input type="text" name="last_name" id="id_last_name"
+                                   class="form-control" value="{{ user.last_name }}" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_email" class="form-label">Email</label>
+                            <input type="email" name="email" id="id_email"
+                                   class="form-control" value="{{ user.email }}" disabled />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_phone" class="form-label">Телефон</label>
+                            <input type="text" name="phone" id="id_phone"
+                                   class="form-control" value="{{ user.phone }}" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_avatar" class="form-label">Аватар</label>
+                            <input type="file" name="avatar" id="id_avatar" class="form-control" />
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">Сохранить изменения</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

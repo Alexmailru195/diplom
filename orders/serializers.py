@@ -1,56 +1,74 @@
+# orders/serializers.py
+
 from rest_framework import serializers
-from .models import Cart, CartItem, Order, OrderItem
-from products.serializers import ProductSerializer
+from .models import Order, OrderItem
 
 
-# Для корзины
-class CartItemSerializer(serializers.ModelSerializer):
-    product = ProductSerializer(read_only=True)
-    total_price = serializers.SerializerMethodField()
-
-    class Meta:
-        model = CartItem
-        fields = ['id', 'product', 'quantity', 'total_price']
-
-    def get_total_price(self, obj):
-        return obj.total_price
-
-
-class CartSerializer(serializers.ModelSerializer):
-    items = CartItemSerializer(many=True, read_only=True)
-    total_items = serializers.SerializerMethodField()
-    total_cost = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Cart
-        fields = ['id', 'items', 'total_items', 'total_cost', 'created_at']
-
-    def get_total_items(self, obj):
-        return sum(item.quantity for item in obj.items.all())
-
-    def get_total_cost(self, obj):
-        return sum(item.total_price for item in obj.items.all())
-
-
-# Для заказов
 class OrderItemSerializer(serializers.ModelSerializer):
-    product = ProductSerializer(read_only=True)
+    """
+    Сериализатор для позиций заказа
+    """
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    product_price = serializers.DecimalField(source='product.price', max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
         model = OrderItem
-        fields = ['id', 'product', 'quantity', 'price']
+        fields = ['id', 'product', 'product_name', 'product_price', 'quantity', 'price']
 
 
 class OrderSerializer(serializers.ModelSerializer):
-    items = OrderItemSerializer(many=True, read_only=True)
+    """
+    Полный сериализатор заказа
+    """
+    order_items = OrderItemSerializer(many=True, read_only=True)
+
+    status_display = serializers.SerializerMethodField()
+    delivery_type_display = serializers.SerializerMethodField()
+    payment_type_display = serializers.SerializerMethodField()
+
+    def get_status_display(self, obj):
+        return obj.get_status_display()
+
+    def get_delivery_type_display(self, obj):
+        return obj.get_delivery_type_display()
+
+    def get_payment_type_display(self, obj):
+        return obj.get_payment_type_display()
 
     class Meta:
         model = Order
-        fields = ['id', 'status', 'delivery_type', 'payment_type', 'address', 'total_price', 'items', 'created_at']
-        read_only_fields = ['status', 'total_price', 'created_at']
+        fields = [
+            'id',
+            'user',
+            'status',
+            'status_display',
+            'delivery_type',
+            'delivery_type_display',
+            'payment_type',
+            'payment_type_display',
+            'address',
+            'total_price',
+            'created_at',
+            'order_items'
+        ]
+        read_only_fields = ['id', 'user', 'total_price', 'created_at']
 
 
-class CreateOrderSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Order
-        fields = ['delivery_type', 'payment_type', 'address']
+class CreateOrderSerializer(serializers.Serializer):
+    """
+    Сериализатор для создания заказа через API
+    """
+    delivery_type = serializers.ChoiceField(choices=Order.DELIVERY_CHOICES)
+    payment_type = serializers.ChoiceField(choices=Order.PAYMENT_CHOICES)
+    address = serializers.CharField(required=False, allow_blank=True)
+
+    def create(self, validated_data):
+        """
+        Этот метод нужен, чтобы Serializer мог работать с .save()
+        Реальная логика оформления заказа находится в ViewSet или utils.py
+        """
+        # Реальную реализацию делаем в ViewSet
+        return validated_data
+
+    def update(self, instance, validated_data):
+        raise NotImplementedError("Метод обновления не реализован")

@@ -1,10 +1,18 @@
+# orders/urls.py
+
 from django.urls import path
-from .views import CartViewSet, OrderViewSet
-from rest_framework.routers import SimpleRouter
+from . import views
+from .views import order_confirm_view
 
+app_name = 'orders'
 
-router = SimpleRouter()
-router.register(r'cart', CartViewSet, basename='cart')
-router.register(r'orders', OrderViewSet, basename='orders')
+urlpatterns = [
+    # Список заказов пользователя
+    path('', views.order_list_view, name='order_list'),
 
-urlpatterns = router.urls
+    # Подтверждение заказа (форма доставки)
+    path('checkout/', order_confirm_view, name='create_order'),
+
+    # Детали конкретного заказа
+    path('<int:order_id>/', views.order_detail_view, name='order_detail'),
+]

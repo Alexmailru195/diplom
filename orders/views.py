@@ -1,72 +1,149 @@
-from rest_framework import viewsets, status
-from rest_framework.response import Response
-from rest_framework.decorators import action
-from django.shortcuts import get_object_or_404
-from products.models import Product
-from .models import Cart, CartItem, Order, OrderItem
-from .serializers import CartSerializer, OrderSerializer, CreateOrderSerializer
+# orders/views.py
+
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from .models import Order, OrderItem
+from cart.models import CartItem
+from .forms import OrderConfirmForm
+
+from django.core.exceptions import ValidationError
+from django.utils.dateparse import parse_date, parse_time
+from django.http import Http404
 
 
-class CartViewSet(viewsets.ViewSet):
-    def list(self, request):
-        cart, created = Cart.objects.get_or_create(user=request.user)
-        serializer = CartSerializer(cart)
-        return Response(serializer.data)
+@login_required(login_url='users:login')
+def order_confirm_view(request):
+    """
+    Подтверждение заказа перед оформлением
+    """
 
-    @action(detail=False, methods=['post'])
-    def add(self, request):
-        product_id = request.data.get('product_id')
-        quantity = int(request.data.get('quantity', 1))
+    if request.user.is_authenticated:
+        try:
+            cart_items = CartItem.objects.filter(cart__user=request.user)
+        except Exception:
+            cart_items = []
+    else:
+        from cart.models import GuestCart
+        session_key = request.session.session_key or ''
+        if not session_key:
+            request.session.create()
+            session_key = request.session.session_key
+        cart_items = GuestCart.objects.filter(session_key=session_key)
 
-        product = get_object_or_404(Product, id=product_id)
-        cart, _ = Cart.objects.get_or_create(user=request.user)
+    if not cart_items.exists():
+        return redirect('cart:cart_view')
 
-        cart_item, created = CartItem.objects.get_or_create(cart=cart, product=product)
-        if not created:
-            cart_item.quantity += quantity
-        cart_item.save()
+    total_price = sum(item.total for item in cart_items)
 
-        return Response({"detail": "Товар добавлен в корзину"}, status=status.HTTP_200_OK)
+    if request.method == 'POST':
+        form = OrderConfirmForm(request.POST)
+        if form.is_valid():
+            delivery_type = form.cleaned_data.get('delivery_type', '')
 
-    @action(detail=False, methods=['delete'])
-    def remove(self, request):
-        item_id = request.data.get('item_id')
-        CartItem.objects.filter(id=item_id).delete()
-        return Response({"detail": "Товар удален из корзины"}, status=status.HTTP_204_NO_CONTENT)
+            order = form.save(commit=False)
+            order.user = request.user
+            order.total_price = total_price
+
+            # Обработка полей доставки
+            if delivery_type == 'courier':
+                delivery_date_str = request.POST.get('delivery_date', '').strip()
+                delivery_time_str = request.POST.get('delivery_time', '').strip()
+
+                try:
+                    delivery_date = parse_date(delivery_date_str) if delivery_date_str else None
+                    delivery_time = parse_time(delivery_time_str) if delivery_time_str else None
+
+                    if delivery_date_str and not delivery_date:
+                        raise ValueError("Неверный формат даты")
+                    if delivery_time_str and not delivery_time:
+                        raise ValueError("Неверный формат времени")
+
+                    order.delivery_date = delivery_date
+                    order.delivery_time = delivery_time
+                    order.pickup_point = None
+
+                except ValueError as e:
+                    form.add_error(None, f"Ошибка ввода даты или времени: {e}")
+                    return render(request, 'orders/order_confirm.html', {
+                        'form': form,
+                        'cart_items': cart_items,
+                        'total_price': total_price,
+                        'pickup_points': Order.PICKUP_POINTS,
+                    })
+
+            elif delivery_type == 'pickup':
+                pickup_point = request.POST.get('pickup_point', '')
+                if not pickup_point:
+                    form.add_error(None, "Выберите пункт самовывоза")
+                    return render(request, 'orders/order_confirm.html', {
+                        'form': form,
+                        'cart_items': cart_items,
+                        'total_price': total_price,
+                        'pickup_points': Order.PICKUP_POINTS,
+                    })
+                order.pickup_point = pickup_point
+                order.delivery_date = None
+                order.delivery_time = None
+
+            else:
+                form.add_error(None, "Неизвестный способ доставки")
+                return render(request, 'orders/order_confirm.html', {
+                    'form': form,
+                    'cart_items': cart_items,
+                    'total_price': total_price,
+                    'pickup_points': Order.PICKUP_POINTS,
+                })
+
+            order.save()
+
+            for item in cart_items:
+                OrderItem.objects.create(
+                    order=order,
+                    product=item.product,
+                    quantity=item.quantity,
+                    price=item.product.price
+                )
+
+            # Очистка корзины
+            if request.user.is_authenticated:
+                cart_items.delete()
+            else:
+                from cart.models import GuestCart
+                GuestCart.objects.filter(session_key=session_key).delete()
+
+            return redirect('orders:order_detail', order_id=order.id)
+
+    else:
+        form = OrderConfirmForm()
+
+    return render(request, 'orders/order_confirm.html', {
+        'form': form,
+        'cart_items': cart_items,
+        'total_price': total_price,
+        'pickup_points': Order.PICKUP_POINTS,
+    })
 
 
-class OrderViewSet(viewsets.ViewSet):
-    def list(self, request):
-        orders = Order.objects.filter(user=request.user)
-        serializer = OrderSerializer(orders, many=True)
-        return Response(serializer.data)
+@login_required(login_url='users:login')
+def order_list_view(request):
+    """
+    Список заказов пользователя
+    """
+    orders = Order.objects.filter(user=request.user).order_by('-created_at')
+    return render(request, 'orders/order_list.html', {'orders': orders})
 
-    def create(self, request):
-        serializer = CreateOrderSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
 
-        cart = get_object_or_404(Cart, user=request.user)
-        if not cart.items.exists():
-            return Response({"detail": "Корзина пуста"}, status=status.HTTP_400_BAD_REQUEST)
+@login_required(login_url='users:login')
+def order_detail_view(request, order_id):
+    """
+    Детали конкретного заказа
+    """
+    try:
+        order = Order.objects.get(id=order_id, user=request.user)
+    except Order.DoesNotExist:
+        raise Http404("Заказ не найден или доступ запрещён")
 
-        order = Order.objects.create(
-            user=request.user,
-            delivery_type=serializer.validated_data['delivery_type'],
-            payment_type=serializer.validated_data['payment_type'],
-            address=serializer.validated_data.get('address', ''),
-            total_price=sum(item.total_price for item in cart.items.all())
-        )
-
-        # Копируем товары из корзины в заказ
-        for item in cart.items.all():
-            OrderItem.objects.create(
-                order=order,
-                product=item.product,
-                quantity=item.quantity,
-                price=item.product.price
-            )
-
-        # Очистка корзины после оформления заказа
-        cart.items.all().delete()
-
-        return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
+    return render(request, 'orders/order_detail.html', {
+        'order': order,
+        'order_items': order.items.all(),
+    })
