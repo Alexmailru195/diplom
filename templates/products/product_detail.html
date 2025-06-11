@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}{{ product.name }}{% endblock %}
+{% block content %}
+<h2>{{ product.name }}</h2>
+<p>{{ product.description }}</p>
+<p><strong>Цена:</strong> {{ product.price }} ₽</p>
+<p><strong>Категория:</strong> {{ product.category }}</p>
+<a href="#" class="btn btn-primary">Добавить в корзину</a>
+{% endblock %}

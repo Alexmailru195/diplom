@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Главная страница{% endblock %}
+{% block content %}
+<h2>Добро пожаловать в интернет-магазин!</h2>
+
+<ul>
+    <li><a href="{% url 'profile' %}">Профиль</a></li>
+    <li><a href="{% url 'products' %}">Каталог товаров</a></li>
+    <li><a href="{% url 'cart_view' %}">Корзина</a></li>
+    <li><a href="{% url 'logout' %}">Выход</a></li>
+</ul>
+{% endblock %}

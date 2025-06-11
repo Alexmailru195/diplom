@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Профиль{% endblock %}
+{% block content %}
+<h2>Профиль пользователя</h2>
+<ul>
+    <li><strong>Имя:</strong> {{ request.user.username }}</li>
+    <li><strong>Email:</strong> {{ request.user.email }}</li>
+    <li><strong>Роль:</strong> {{ request.user.get_role_display }}</li>
+    {% if request.user.phone %}
+        <li><strong>Телефон:</strong> {{ request.user.phone }}</li>
+    {% endif %}
+</ul>
+<a href="{% url 'logout' %}" class="btn btn-danger">Выход</a>
+{% endblock %}
