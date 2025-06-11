@@ -23,15 +23,17 @@
         <div class="col-md-4 mb-4">
             <div class="card h-100">
                 {% if product.images.all.0 %}
-                    <img src="{{ product.images.all.0.image.url }}" class="card-img-top" alt="{{ product.name }}">
+                <img src="{{ product.images.all.0.image.url }}" class="card-img-top" alt="{{ product.name }}">
                 {% else %}
-                    <img src="/static/images/no-image.png" class="card-img-top" alt="Нет изображения">
+                <img src="/static/images/no-image.png" class="card-img-top" alt="Нет изображения">
                 {% endif %}
                 <div class="card-body">
                     <h5 class="card-title">{{ product.name }}</h5>
                     <p class="card-text">{{ product.price }} ₽</p>
-                    <a href="{% url 'products:product_detail' product.id %}" class="btn btn-outline-primary btn-sm me-2">Подробнее</a>
-                    <a href="{% url 'cart:add_to_cart' product.id %}" class="btn btn-success btn-sm">Добавить в корзину</a>
+                    <a href="{% url 'products:product_detail' product.id %}"
+                       class="btn btn-outline-primary btn-sm me-2">Подробнее</a>
+                    <a href="{% url 'cart:add_to_cart' product.id %}" class="btn btn-success btn-sm">Добавить в
+                        корзину</a>
                 </div>
             </div>
         </div>

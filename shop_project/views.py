@@ -1,22 +1,16 @@
 # shop_project/views.py
 
-from django.shortcuts import render
-from django.core.exceptions import PermissionDenied
-from products.models import Product
-from django.shortcuts import redirect
-from django.contrib.auth import logout
 from django.contrib import messages
+from django.contrib.auth import logout
+from django.shortcuts import redirect
+from django.shortcuts import render
+
+from products.models import Product
 
 
 def home_view(request):
-    """
-    Главная страница с популярными товарами
-    """
-    popular_products = Product.objects.filter(is_active=True).order_by('-id')[:3]
-
-    return render(request, 'home.html', {
-        'popular_products': popular_products
-    })
+    products = Product.objects.all()[:4]  # ← просто последние товары
+    return render(request, 'home.html', {'popular_products': products})
 
 
 def about_view(request):

@@ -3,19 +3,20 @@
 from django.shortcuts import render, get_object_or_404
 
 from .models import Product, Category
+from django.db.models import Count
 
 
 def product_list_view(request):
-    """
-    Список всех товаров
-    """
-    products = Product.objects.filter(is_active=True).select_related('category')
-    categories = Category.objects.all()
-    context = {
+    # Получаем все товары
+    products = Product.objects.all()
+
+    # Аннотируем количество товаров в каждой категории
+    categories = Category.objects.annotate(product_count=Count('products'))
+
+    return render(request, 'products/product_list.html', {
         'products': products,
         'categories': categories
-    }
-    return render(request, 'products/product_list.html', context)
+    })
 
 
 def product_detail_view(request, pk):

@@ -9,7 +9,7 @@
             <ul class="list-group mb-4">
                 {% for category in categories %}
                     <li class="list-group-item">
-                        <a href="{% url 'category_products' category.id %}">
+                        <a href="{% url 'products:product_list' %}?category={{ category.id }}">
                             {{ category.name }}
                             {% if category.product_count %}
                                 ({{ category.product_count }})
@@ -20,7 +20,7 @@
             </ul>
         </div>
 
-        <!-- Список товаров -->
+        <!-- Товары -->
         <div class="col-md-9">
             <h2>Каталог товаров</h2>
 
@@ -37,7 +37,7 @@
                                 <div class="card-body">
                                     <h5 class="card-title">{{ product.name }}</h5>
                                     <p class="card-text">{{ product.price }} ₽</p>
-                                    <a href="{% url 'product_detail' product.id %}" class="btn btn-outline-primary btn-sm">Подробнее</a>
+                                    <a href="{% url 'products:product_detail' product.id %}" class="btn btn-outline-primary btn-sm me-2">Подробнее</a>
                                     <a href="{% url 'cart:add_to_cart' product.id %}" class="btn btn-success btn-sm">Добавить в корзину</a>
                                 </div>
                             </div>

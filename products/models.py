@@ -4,7 +4,7 @@ from django.db import models
 
 
 class Category(models.Model):
-    name = models.CharField("Название", max_length=255)
+    name = models.CharField("Название", max_length=100)
     parent = models.ForeignKey(
         'self',
         on_delete=models.SET_NULL,
@@ -29,10 +29,13 @@ class Product(models.Model):
     price = models.DecimalField("Цена", max_digits=10, decimal_places=2)
     category = models.ForeignKey(
         Category,
-        on_delete=models.CASCADE,
-        verbose_name="Категория"
+        on_delete=models.SET_NULL,
+        null=True,
+        verbose_name="Категория",
+        related_name = 'products'
     )
     is_active = models.BooleanField("Активный", default=True)
+    is_popular = models.BooleanField("Популярный", default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
