@@ -2,6 +2,8 @@
 
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+
+from shop_project import settings
 from .models import Order, OrderItem
 from cart.models import CartItem
 from .forms import OrderConfirmForm
@@ -9,6 +11,9 @@ from .forms import OrderConfirmForm
 from django.core.exceptions import ValidationError
 from django.utils.dateparse import parse_date, parse_time
 from django.http import Http404
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 
 
 @login_required(login_url='users:login')
@@ -111,6 +116,27 @@ def order_confirm_view(request):
                 from cart.models import GuestCart
                 GuestCart.objects.filter(session_key=session_key).delete()
 
+            # Отправка email
+            subject = 'Ваш заказ оформлен!'
+            to_email = order.get_email()
+            html_message = render_to_string('orders/order_confirmation_email.html', {
+                'order': order,
+                'order_items': order.items.all()
+            })
+            plain_message = strip_tags(html_message)
+            try:
+                send_mail(
+                    subject,
+                    plain_message,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [to_email],
+                    html_message=html_message,
+                    fail_silently=False
+                )
+            except Exception as e:
+                print(f"Ошибка отправки email: {e}")
+                from django.contrib import messages
+                messages.warning(request, "Заказ оформлен, но не удалось отправить email")
             return redirect('orders:order_detail', order_id=order.id)
 
     else:

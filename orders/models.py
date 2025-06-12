@@ -41,9 +41,6 @@ class Order(models.Model):
     delivery_date = models.DateField("Дата доставки", blank=True, null=True)
     delivery_time = models.TimeField("Время доставки", blank=True, null=True)
 
-    def __str__(self):
-        return f"Заказ #{self.id}"
-
     PAYMENT_CHOICES = (
         ('online', 'Онлайн'),
         ('cash', 'Наличные при получении'),
@@ -86,6 +83,10 @@ class Order(models.Model):
         default=0,
     )
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+
+    def get_email(self):
+        # Берём email пользователя или из формы
+        return self.email or (self.user.email if self.user else None)
 
     def __str__(self):
         return f"Заказ #{self.id} от {self.name}"

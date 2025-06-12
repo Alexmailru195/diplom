@@ -61,20 +61,46 @@ def remove_from_cart(request, product_id):
     return redirect('cart:cart_view')
 
 
+@login_required(login_url='users:login')
 def update_cart(request):
     if request.method == 'POST':
         product_id = request.POST.get('product_id')
-        quantity = int(request.POST.get('quantity', 1))
+        quantity_str = request.POST.get('quantity', '1')
+
+        if not product_id:
+            return redirect('cart:cart_view')
+
+        # Проверка корректности значения quantity
+        try:
+            quantity = int(quantity_str)
+            if quantity < 1:
+                quantity = 1
+        except (ValueError, TypeError):
+            quantity = 1
 
         if request.user.is_authenticated:
-            cart = Cart.objects.get(user=request.user)
-            cart_item = cart.items.get(product_id=product_id)
-            cart_item.quantity = quantity
-            cart_item.save()
+            try:
+                cart_item = CartItem.objects.get(cart__user=request.user, product_id=product_id)
+                cart_item.quantity = quantity
+                cart_item.save()
+            except CartItem.DoesNotExist:
+                pass
         else:
+            from django.contrib.sessions.backends.db import SessionStore
             session_key = request.session.session_key or ''
-            guest_cart = GuestCart.objects.get(session_key=session_key, product_id=product_id)
-            guest_cart.quantity = quantity
-            guest_cart.save()
+            if not session_key:
+                request.session.save()
+                session_key = request.session.session_key
+
+            guest_cart, created = GuestCart.objects.get_or_create(
+                session_key=session_key,
+                product_id=product_id,
+                defaults={'quantity': quantity}
+            )
+            if not created:
+                guest_cart.quantity = quantity
+                guest_cart.save()
+
+        return redirect('cart:cart_view')
 
     return redirect('cart:cart_view')
