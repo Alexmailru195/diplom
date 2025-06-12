@@ -1,7 +1,8 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Каталог товаров{% endblock %}
 {% block content %}
-<div class="container mt-4">
+<div class="container mt-5">
     <div class="row">
         <!-- Категории -->
         <div class="col-md-3">
@@ -11,8 +12,8 @@
                     <li class="list-group-item">
                         <a href="{% url 'products:product_list' %}?category={{ category.id }}">
                             {{ category.name }}
-                            {% if category.product_count %}
-                                ({{ category.product_count }})
+                            {% if category.products.count %}
+                                ({{ category.products.count }})
                             {% endif %}
                         </a>
                     </li>
@@ -22,30 +23,40 @@
 
         <!-- Товары -->
         <div class="col-md-9">
-            <h2>Каталог товаров</h2>
+            {% if selected_category %}
+                <h2>Товары в категории: {{selected_category.name}}</h2>
 
-            {% if products %}
-                <div class="row">
-                    {% for product in products %}
-                        <div class="col-md-4 mb-4">
-                            <div class="card h-100">
-                                {% if product.images.all.0 %}
-                                    <img src="{{ product.images.all.0.image.url }}" class="card-img-top" alt="{{ product.name }}">
-                                {% else %}
-                                    <img src="/static/images/no-image.png" class="card-img-top" alt="Нет изображения">
-                                {% endif %}
-                                <div class="card-body">
-                                    <h5 class="card-title">{{ product.name }}</h5>
-                                    <p class="card-text">{{ product.price }} ₽</p>
-                                    <a href="{% url 'products:product_detail' product.id %}" class="btn btn-outline-primary btn-sm me-2">Подробнее</a>
-                                    <a href="{% url 'cart:add_to_cart' product.id %}" class="btn btn-success btn-sm">Добавить в корзину</a>
+                {% if products %}
+                    <div class="row">
+                        {% for product in products %}
+                            <div class="col-md-4 mb-4">
+                                <div class="card h-100 shadow-sm">
+                                    {% if product.images.all.0 %}
+                                        <img src="{{ product.images.all.0.image.url }}" class="card-img-top" alt="{{ product.name }}">
+                                    {% else %}
+                                        <img src="{% static 'images/no-image.png' %}" class="card-img-top" alt="Нет изображения">
+                                    {% endif %}
+                                    <div class="card-body">
+                                        <h5 class="card-title">{{ product.name }}</h5>
+                                        <p class="card-text">{{ product.price }} ₽</p>
+                                        <form action="{% url 'cart:add_to_cart' product.id %}" method="post">
+                                            {% csrf_token %}
+                                            <input type="number" name="quantity" value="1" min="1" required>
+                                            <button type="submit" class="btn btn-success btn-sm">Добавить в корзину</button>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    {% endfor %}
-                </div>
+                        {% empty %}
+                            <p>В этой категории пока нет товаров.</p>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p>Сначала выберите категорию слева</p>
+                {% endif %}
             {% else %}
-                <p>Товаров пока нет.</p>
+                <h4>Выберите категорию</h4>
+                <p>Чтобы увидеть товары — нажмите на нужную категорию слева</p>
             {% endif %}
         </div>
     </div>

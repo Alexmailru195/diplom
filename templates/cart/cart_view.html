@@ -41,7 +41,7 @@
 
 <div class="d-flex justify-content-between mt-4">
     <h4>Итого: {{ total_price|floatformat:2 }} ₽</h4>
-    <a href="{% url 'orders:create_order' %}" class="btn btn-success">Оформить заказ</a>
+    <a href="{% url 'orders:checkout' %}" class="btn btn-success">Оформить заказ</a>
 </div>
 
 {% else %}

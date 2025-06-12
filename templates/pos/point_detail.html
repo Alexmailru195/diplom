@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{{ point.name }}{% endblock %}
+{% block content %}
+<div class="container mt-5">
+    <h2>Пункт "{{ point.name }}"</h2>
+    <p><strong>Адрес:</strong> {{point.address}}</p>
+    <p><strong>Количество товаров:</strong> {{inventories.count}}</p>
+
+    <h4>Остатки</h4>
+    <ul>
+        {% for inv in inventories %}
+        <li>{{ inv.product.name }} — {{ inv.quantity }} шт.</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

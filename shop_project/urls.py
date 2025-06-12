@@ -23,8 +23,8 @@ urlpatterns = [
     path('users/', include('users.urls')),
     path('logout/', views.logout_view, name='logout'),
     path('notifications/', include('notifications.urls')),
-    path('pos/', include('pos.urls')),
-    path('inventory/', include('inventory.urls')),
+    path('pos/', include(('pos.urls', 'pos'), namespace='pos')),
+    path('inventory/', include(('inventory.urls', 'inventory'), namespace='inventory')),
 ]
 
 # === Обслуживание медиафайлов (только для разработки) ===

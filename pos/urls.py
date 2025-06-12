@@ -1,20 +1,17 @@
 # pos/urls.py
+
+from django.urls import path
 from . import views
-from django.urls import path, include
-from rest_framework.routers import SimpleRouter
-from .views import PosViewSet
+from inventory.views import move_inventory as move_inventory_view
 
 
-# === Роутер для API ===
-router = SimpleRouter()
-router.register(r'api/pos', PosViewSet, basename='pos_api')
+app_name = 'pos'
 
-# === Дополнительные маршруты ===
 urlpatterns = [
-    # Можно добавить шаблоны, если используется интерфейс для продавца
-    path('pos/', views.pos_list_view, name='pos_list'),
-    path('pos/<int:pk>/', views.pos_detail_view, name='pos_detail'),
+    path('', views.point_list_view, name='point_list'),
+    path('<int:point_id>/', views.point_detail_view, name='point_detail'),
+    path('move/', move_inventory_view, name='move_inventory'),
+    path('add/', views.point_create_view, name='point_add'),
+    path('<int:point_id>/edit/', views.point_update_view, name='point_edit'),
+    path('<int:point_id>/delete/', views.point_delete_view, name='point_delete'),
 ]
-
-# === Подключаем маршруты из роутера ===
-urlpatterns += router.urls

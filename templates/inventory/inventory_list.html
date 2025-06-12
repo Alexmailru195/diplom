@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Остатки на точках{% endblock %}
+{% block content %}
+<div class="container mt-5">
+    <h2>Остатки товаров по точкам</h2>
+
+    <a href="{% url 'inventory:add' %}" class="btn btn-primary mb-3">Добавить остаток</a>
+
+    {% if inventories %}
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Товар</th>
+                <th>Пункт выдачи</th>
+                <th>Количество</th>
+                <th>Обновлено</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for inv in inventories %}
+            <tr>
+                <td>{{ inv.product.name }}</td>
+                <td>{{ inv.point.name }}</td>
+                <td>{{ inv.quantity }}</td>
+                <td>{{ inv.updated_at|date:"d.m.Y H:i" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>Нет остатков</p>
+    {% endif %}
+</div>
+{% endblock %}

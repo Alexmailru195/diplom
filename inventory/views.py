@@ -1,113 +1,128 @@
 # inventory/views.py
-from rest_framework.decorators import action
-from rest_framework.viewsets import ViewSet
-from rest_framework.response import Response
-from rest_framework import status
-from .models import ProductInventory, StockMovement
-from .serializers import (
-    ProductInventorySerializer,
-    InventoryAdjustSerializer,
-    StockMovementSerializer
-)
+
+from django.contrib import messages
+from django.contrib.auth.decorators import user_passes_test
+from django.shortcuts import render, redirect
+
+from users.decorators import permission_required
+from .forms import InventoryMoveForm
+from .forms import PointInventoryForm
+from django.db import transaction
+from .models import PointInventory, StockMovement
 
 
-class InventoryViewSet(ViewSet):
-    """
-    API endpoint для управления остатками товаров и их движениями.
-    """
+def is_manager(user):
+    return user.is_superuser or user.is_staff or user.groups.filter(name='Модераторы').exists()
 
-    def list(self, request):
-        """
-        Получить список всех товаров с текущими остатками
-        """
-        inventories = ProductInventory.objects.all()
-        serializer = ProductInventorySerializer(inventories, many=True)
-        return Response(serializer.data)
 
-    def retrieve(self, request, pk=None):
-        """
-        Получить детали инвентаря по ID
-        """
-        try:
-            inventory = ProductInventory.objects.get(pk=pk)
-            serializer = ProductInventorySerializer(inventory)
-            return Response(serializer.data)
-        except ProductInventory.DoesNotExist:
-            return Response({"detail": "Инвентарь не найден"}, status=status.HTTP_404_NOT_FOUND)
+# inventory/views.py
+@user_passes_test(is_manager)
+def move_inventory(request):
+    form = InventoryMoveForm()
 
-    @action(detail=True, methods=['post'])
-    def adjust_stock(self, request, pk=None):
-        """
-        Добавить/уменьшить количество товара (движение остатков)
-        Пример POST:
-        {
-          "movement_type": "in",
-          "quantity": 50,
-          "description": "Новая поставка"
-        }
-        """
-        try:
-            inventory = ProductInventory.objects.get(pk=pk)
-        except ProductInventory.DoesNotExist:
-            return Response({"detail": "Инвентарь не найден"}, status=status.HTTP_404_NOT_FOUND)
+    if request.method == 'POST':
+        form = InventoryMoveForm(request.POST)
 
-        serializer = InventoryAdjustSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if form.is_valid():
+            product = form.cleaned_data['product']
+            from_point = form.cleaned_data['from_point']
+            to_point = form.cleaned_data['to_point']
+            quantity = form.cleaned_data['quantity']
 
-        movement_type = serializer.validated_data['movement_type']
-        quantity = serializer.validated_data['quantity']
+            try:
+                with transaction.atomic():
+                    # Получаем инвентарь из точки отправления
+                    from_inv, created = PointInventory.objects.get_or_create(
+                        product=product,
+                        point=from_point,
+                        defaults={'quantity': 0}
+                    )
 
-        # Обновляем количество товара
-        if movement_type == 'in':
-            inventory.quantity += quantity
-        elif movement_type == 'out':
-            if inventory.quantity < quantity:
-                return Response(
-                    {"detail": "Недостаточно товара на складе"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            inventory.quantity -= quantity
-        elif movement_type == 'adjust':
-            inventory.quantity += quantity
+                    if from_inv.quantity < quantity:
+                        messages.error(request, "Недостаточно товара на исходной точке")
+                        return render(request, 'inventory/move_form.html', {'form': form})
 
-        inventory.save()
+                    # Получаем или создаём инвентарь целевой точки
+                    to_inv, created = PointInventory.objects.select_for_update().get_or_create(
+                        product=product,
+                        point=to_point,
+                        defaults={'quantity': 0}
+                    )
 
-        # Создаем запись о движении
-        movement = StockMovement.objects.create(
-            product_inventory=inventory,
-            movement_type=movement_type,
-            quantity=quantity,
-            related_order=serializer.validated_data.get('related_order'),
-            description=serializer.validated_data.get('description')
-        )
+                    # Обновляем остатки
+                    from_inv.quantity -= quantity
+                    from_inv.save()
 
-        movement_serializer = StockMovementSerializer(movement)
+                    to_inv.quantity += quantity
+                    to_inv.save()
 
-        return Response({
-            "inventory": ProductInventorySerializer(inventory).data,
-            "movement": movement_serializer.data
-        }, status=status.HTTP_200_OK)
+                    # Создаём запись в истории
+                    StockMovement.objects.create(
+                        movement_type='move',
+                        product_inventory=from_inv,
+                        from_point=from_point,
+                        to_point=to_point,
+                        quantity=quantity
+                    )
 
-    @action(detail=False, methods=['get'])
-    def low_stock_alert(self, request):
-        """
-        Список товаров с низким остатком (например, меньше 5 шт.)
-        """
-        threshold = int(request.query_params.get('threshold', 5))
-        inventories = ProductInventory.objects.filter(quantity__lt=threshold)
-        serializer = ProductInventorySerializer(inventories, many=True)
-        return Response(serializer.data)
+                    messages.success(request, "Товар успешно перемещён")
+                    return redirect('inventory:stock_history')
 
-    @action(detail=False, methods=['get'])
-    def history(self, request):
-        """
-        Получить историю движений товаров
-        """
-        movements = StockMovement.objects.all().order_by('-timestamp')
-        page = self.paginate_queryset(movements)
-        if page is not None:
-            serializer = StockMovementSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+            except Exception as e:
+                messages.error(request, f"Ошибка при перемещении: {e}")
+                return redirect('inventory:move_inventory')
+        else:
+            messages.error(request, "Форма заполнена неверно")
+            print(form.errors)
 
-        serializer = StockMovementSerializer(movements, many=True)
-        return Response(serializer.data)
+    return render(request, 'inventory/move_form.html', {'form': form})
+
+
+@permission_required
+def inventory_list_view(request):
+    inventories = PointInventory.objects.select_related('product', 'point').all()
+    return render(request, 'inventory/inventory_list.html', {'inventories': inventories})
+
+
+def inventory_detail_view(request, inventory_id):
+    inventory = PointInventory.objects.get(id=inventory_id)
+    movements = StockMovement.objects.filter(product_inventory=inventory).order_by('-timestamp')
+    return render(request, 'inventory/inventory_detail.html', {
+        'inventory': inventory,
+        'movements': movements
+    })
+
+
+@user_passes_test(lambda u: u.is_superuser or u.is_staff or u.groups.filter(name='Модераторы').exists())
+def add_inventory(request):
+    if request.method == 'POST':
+        form = PointInventoryForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('inventory:inventory_list')
+    else:
+        form = PointInventoryForm()
+
+    return render(request, 'inventory/add_inventory.html', {'form': form})
+
+def stock_movement_history(request):
+    movements = StockMovement.objects.select_related('from_point', 'to_point').all().order_by('-timestamp')
+    return render(request, 'inventory/history.html', {'movements': movements})
+
+
+def low_stock_alert(request):
+    threshold = 5  # или получать из GET параметра
+    inventories = PointInventory.objects.filter(quantity__lt=threshold)
+    return render(request, 'inventory/low_stock.html', {'inventories': inventories})
+
+
+def stock_history(request):
+    movements = StockMovement.objects.select_related(
+        'product_inventory',
+        'from_point',
+        'to_point'
+    ).all().order_by('-timestamp')
+
+    return render(request, 'inventory/history.html', {
+        'movements': movements
+    })

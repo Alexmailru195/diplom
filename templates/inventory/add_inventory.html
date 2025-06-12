@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Добавить остаток{% endblock %}
+{% block content %}
+<div class="container mt-5">
+    <h2>Добавить остаток</h2>
+
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-success">Сохранить</button>
+    </form>
+</div>
+{% endblock %}

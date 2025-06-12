@@ -28,25 +28,49 @@ def cart_view(request):
 def add_to_cart(request, product_id):
     product = get_object_or_404(Product, id=product_id)
 
+    # Получаем количество из формы
+    quantity_str = request.POST.get('quantity', '1')
+    try:
+        quantity = int(quantity_str)
+        if quantity < 1:
+            quantity = 1
+    except ValueError:
+        quantity = 1
+
     if request.user.is_authenticated:
-        cart, created = Cart.objects.get_or_create(user=request.user)
-        cart_item, created = cart.items.get_or_create(product=product)
+        cart, _ = Cart.objects.get_or_create(user=request.user)
+
+        # Получаем или создаём товар в корзине
+        cart_item, created = CartItem.objects.get_or_create(
+            cart=cart,
+            product=product,
+            defaults={'quantity': quantity}
+        )
+
         if not created:
-            cart_item.quantity += 1
+            cart_item.quantity += quantity
             cart_item.save()
-        return redirect('products:product_detail', pk=product_id)
+
+        # Возвращаем пользователя обратно туда, где он был
+        return redirect(request.META.get('HTTP_REFERER', 'products:product_list'))
+
     else:
-        # Обработка гостевой корзины через сессию или GuestCart
         session_key = request.session.session_key or ''
-        from .models import GuestCart
+        if not session_key:
+            request.session.create()
+            session_key = request.session.session_key
+
         guest_cart, created = GuestCart.objects.get_or_create(
             session_key=session_key,
-            product=product
+            product=product,
+            defaults={'quantity': quantity}
         )
+
         if not created:
-            guest_cart.quantity += 1
+            guest_cart.quantity += quantity
             guest_cart.save()
-        return redirect('products:product_detail', pk=product_id)
+
+    return redirect('products:product_detail', pk=product_id)
 
 
 def remove_from_cart(request, product_id):

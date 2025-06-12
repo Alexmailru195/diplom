@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Подтвердите удаление{% endblock %}
+{% block content %}
+<div class="container mt-5">
+    <h2>Вы уверены?</h2>
+    <p>Вы действительно хотите удалить точку "{{ point.name }}"?</p>
+
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Да, удалить</button>
+        <a href="{% url 'pos:point_list' %}" class="btn btn-secondary">Отмена</a>
+    </form>
+</div>
+{% endblock %}

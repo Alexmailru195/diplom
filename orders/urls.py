@@ -1,18 +1,12 @@
 # orders/urls.py
 
 from django.urls import path
-from . import views
-from .views import order_confirm_view
+from .views import order_confirm_view, order_list_view, order_detail_view
 
 app_name = 'orders'
 
 urlpatterns = [
-    # Список заказов пользователя
-    path('', views.order_list_view, name='order_list'),
-
-    # Подтверждение заказа (форма доставки)
-    path('checkout/', order_confirm_view, name='create_order'),
-
-    # Детали конкретного заказа
-    path('<int:order_id>/', views.order_detail_view, name='order_detail'),
+    path('checkout/', order_confirm_view, name='checkout'),
+    path('', order_list_view, name='order_list'),
+    path('<int:order_id>/', order_detail_view, name='order_detail'),
 ]

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}История движения {{ inventory.product.name }}{% endblock %}
+{% block content %}
+<div class="container mt-5">
+    <h2>История движения "{{ inventory.product.name }}" в точке "{{ inventory.point.name }}"</h2>
+
+    <p><strong>Количество:</strong> {{ inventory.quantity }} шт.</p>
+
+    <h4>История перемещений</h4>
+    <ul>
+        {% for movement in movements %}
+        <li>
+            {{ movement.timestamp }}
+            {{ movement.get_movement_type_display }}:
+            {{ movement.quantity }} шт.
+            {% if movement.description %}— {{ movement.description }}{% endif %}
+        </li>
+        {% empty %}
+        <p>Нет истории</p>
+        {% endfor %}
+    </ul>
+
+    <a href="{% url 'inventory:inventory_list' %}" class="btn btn-secondary">Назад к списку остатков</a>
+</div>
+{% endblock %}

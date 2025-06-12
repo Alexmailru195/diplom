@@ -1,61 +1,63 @@
 {% extends "base.html" %}
-{% block title %}{{ product.name }}{% endblock %}
+{% load static %}
+{% block title %}{{ product.name }} — {{ block.super }}{% endblock %}
 {% block content %}
-<div class="container mt-4">
-    <h1>{{ product.name }}</h1>
-
+<div class="container mt-5">
     <div class="row">
-        <!-- Изображения товара -->
+        <!-- Карусель с изображениями -->
         <div class="col-md-6">
-            <div id="carouselExampleIndicators" class="carousel slide" data-bs-ride="carousel">
-                <div class="carousel-inner">
-                    {% for image in images %}
-                    <div class="carousel-item {% if forloop.first %}active{% endif %}">
-                        <img src="{{ image.image.url }}" class="d-block w-100" alt="{{ product.name }}">
+            {% if images %}
+                <div id="productCarousel" class="carousel slide" data-bs-ride="carousel">
+                    <div class="carousel-inner">
+                        {% for image in images %}
+                            <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                                <img src="{{ image.image.url }}" class="d-block w-100" alt="{{ product.name }}">
+                            </div>
+                        {% endfor %}
                     </div>
-                    {% empty %}
-                    <p>Нет изображений</p>
-                    {% endfor %}
+                    <button class="carousel-control-prev" type="button" data-bs-target="#productCarousel" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#productCarousel" data-bs-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                    </button>
                 </div>
-                <button class="carousel-control-prev" type="button" data-bs-target="#carouselExampleIndicators"
-                        data-bs-slide="prev">
-                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                </button>
-                <button class="carousel-control-next" type="button" data-bs-target="#carouselExampleIndicators"
-                        data-bs-slide="next">
-                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                </button>
-            </div>
+            {% else %}
+                <img src="{% static 'images/no-image.png' %}" class="img-fluid mb-3" alt="Нет изображения">
+            {% endif %}
         </div>
 
         <!-- Основная информация о товаре -->
         <div class="col-md-6">
-            <h3>Описание</h3>
-            <p>{{ product.description|linebreaksbr }}</p>
+            <h2>{{ product.name }}</h2>
+            <p><strong>Описание:</strong> {{ product.description|linebreaksbr }}</p>
+            <p><strong>Цена:</strong> {{ product.price }} ₽</p>
 
-            <h4>Цена:</h4>
-            <p><strong>{{ product.price }} ₽</strong></p>
+            <!-- Общий остаток -->
+            <h4>В наличии: {{ total_stock }} шт.</h4>
 
-            <!-- Атрибуты товара -->
+            <!-- Характеристики -->
             {% if attributes %}
-            <h4>Характеристики:</h4>
-            <ul>
-                {% for attr in attributes %}
-                <li><strong>{{ attr.attribute.name }}</strong>: {{ attr.value }}</li>
-                {% endfor %}
-            </ul>
+                <h4>Характеристики:</h4>
+                <ul class="list-group list-group-flush mb-3">
+                    {% for attr in attributes %}
+                        <li class="list-group-item">
+                            <strong>{{ attr.attribute.name }}</strong>: {{ attr.value }}
+                        </li>
+                    {% endfor %}
+                </ul>
             {% endif %}
 
-            <!-- Кнопки -->
+            <!-- Форма добавления в корзину -->
             <form action="{% url 'cart:add_to_cart' product.id %}" method="post">
                 {% csrf_token %}
-                <input type="number" name="quantity" value="1" min="1"/>
-                <button type="submit" class="btn btn-primary">Добавить в корзину</button>
+                <input type="number" name="quantity" value="1" min="1" class="form-control w-25 mb-3" />
+                <button type="submit" class="btn btn-success">Добавить в корзину</button>
             </form>
         </div>
     </div>
 
-    <!-- Кнопка "Назад к товарам" -->
+    <!-- Кнопка "Назад к каталогу" -->
     <a href="{% url 'products:product_list' %}" class="btn btn-secondary mt-3">Назад к каталогу</a>
 </div>
 {% endblock %}

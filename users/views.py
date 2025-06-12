@@ -57,20 +57,13 @@ def logout_view(request):
 
 @login_required
 def profile_view(request):
-    """
-    Просмотр и редактирование профиля
-    """
-    if request.method == 'POST':
-        form = ProfileForm(request.POST, request.FILES, instance=request.user)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Профиль обновлён")
-            return redirect('users:profile')
-    else:
-        form = ProfileForm(instance=request.user)
+    is_moderator = False
+    if request.user.groups.filter(name='Модераторы').exists():
+        is_moderator = True
 
     return render(request, 'users/profile.html', {
-        'form': form,
+        'user': request.user,
+        'is_moderator': is_moderator
     })
 
 

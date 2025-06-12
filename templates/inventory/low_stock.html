@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Низкие остатки{% endblock %}
+{% block content %}
+<div class="container mt-5">
+    <h2>Товары с низким остатком</h2>
+
+    {% if inventories %}
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Товар</th>
+                <th>Пункт выдачи</th>
+                <th>Количество</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for inv in inventories %}
+            <tr>
+                <td>{{ inv.product.name }}</td>
+                <td>{{ inv.point.name }}</td>
+                <td>{{ inv.quantity }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>Все товары в наличии</p>
+    {% endif %}
+</div>
+{% endblock %}

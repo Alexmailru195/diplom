@@ -1,54 +1,23 @@
 # inventory/admin.py
 
 from django.contrib import admin
-from .models import ProductInventory, StockMovement
+from .models import PointInventory, StockMovement
 
 
-class StockMovementInline(admin.TabularInline):
-    """
-    Inline для отображения движений товара внутри карточки инвентаря
-    """
-    model = StockMovement
-    extra = 0
-    readonly_fields = ('movement_type', 'quantity', 'timestamp', 'related_order')
-    can_delete = False
-    can_add_related = False
-    verbose_name = "Движение товара"
-    verbose_name_plural = "Движения товаров"
-
-
-@admin.register(ProductInventory)
-class ProductInventoryAdmin(admin.ModelAdmin):
-    list_display = ('product', 'quantity', 'updated_at')
-    search_fields = ('product__name',)
-    list_filter = ('quantity', 'updated_at')
-    inlines = [StockMovementInline]
-    readonly_fields = ('updated_at',)
-    ordering = ('-updated_at',)
-
-    fieldsets = (
-        ('Информация о товаре', {
-            'fields': ('product', 'quantity', 'updated_at')
-        }),
-    )
-
-    def save_model(self, request, obj, form, change):
-        # При сохранении обновляем время
-        obj.save()
-        super().save_model(request, obj, form, change)
+@admin.register(PointInventory)
+class PointInventoryAdmin(admin.ModelAdmin):
+    list_display = ('product', 'point', 'quantity', 'updated_at')
+    search_fields = ('product__name', 'point__name')
+    list_filter = ('point', 'product')
 
 
 @admin.register(StockMovement)
 class StockMovementAdmin(admin.ModelAdmin):
-    list_display = ('product_inventory', 'movement_type', 'quantity', 'timestamp', 'related_order')
-    list_filter = ('movement_type', 'timestamp')
-    search_fields = ('product_inventory__product__name',)
-    readonly_fields = ('timestamp', 'related_order')
+    list_display = ('timestamp', 'product_name', 'from_point', 'to_point', 'quantity')
+    list_filter = ('product_inventory__product', 'from_point', 'to_point')
 
-    fieldsets = (
-        ('Детали движения', {
-            'fields': ('product_inventory', 'movement_type', 'quantity', 'related_order', 'timestamp')
-        }),
-    )
+    def product_name(self, obj):
+        return obj.product_inventory.product.name if obj.product_inventory else None
 
-    ordering = ('-timestamp',)
+    product_name.short_description = 'Товар'
+    product_name.admin_order_field = 'product_inventory__product'

@@ -1,68 +1,71 @@
 # inventory/models.py
 
 from django.db import models
-from products.models import Product
-from orders.models import Order
+from django.utils.translation import gettext_lazy as _
+from pos.models import Point
 
 
-class ProductInventory(models.Model):
-    """
-    Остатки товара на складе
-    """
-    product = models.OneToOneField(
-        Product,
+class PointInventory(models.Model):
+    product = models.ForeignKey(
+        'products.Product',
         on_delete=models.CASCADE,
-        related_name='inventory',
-        verbose_name='Товар'
+        verbose_name=_("Товар")
     )
-    quantity = models.PositiveIntegerField(default=0, verbose_name='Количество')
-    updated_at = models.DateTimeField(auto_now=True, verbose_name='Обновлено')
+    point = models.ForeignKey(
+        'pos.Point',
+        on_delete=models.CASCADE,
+        verbose_name=_("Пункт выдачи")
+    )
+    quantity = models.PositiveIntegerField(default=0, verbose_name=_("Количество"))
+    updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Обновлено"))
 
     def __str__(self):
-        return f"{self.product.name} — {self.quantity} шт."
+        return f"{self.product.name} — {self.point.name}, {self.quantity} шт."
 
     class Meta:
-        verbose_name = "Остаток товара"
-        verbose_name_plural = "Инвентарь товаров"
-        ordering = ['-updated_at']
+        verbose_name = "Остаток на точке"
+        verbose_name_plural = "Остатки на точках"
+        constraints = [
+            models.UniqueConstraint(
+                fields=['product', 'point'],
+                name='unique_product_point'
+            )
+        ]
 
 
 class StockMovement(models.Model):
-    """
-    Лог движения остатков (приход/расход)
-    """
     MOVEMENT_TYPES = (
         ('in', 'Приход'),
         ('out', 'Расход'),
-        ('adjust', 'Коррекция'),
+        ('move', 'Перемещение')
     )
 
-    product_inventory = models.ForeignKey(
-        ProductInventory,
-        on_delete=models.CASCADE,
-        related_name='movements',
-        verbose_name='Инвентарь'
-    )
     movement_type = models.CharField(
         max_length=10,
         choices=MOVEMENT_TYPES,
-        verbose_name='Тип движения'
+        null=False,
+        blank=False,
     )
-    quantity = models.IntegerField(verbose_name='Количество')
-    timestamp = models.DateTimeField(auto_now_add=True, verbose_name='Дата')
-    related_order = models.ForeignKey(
-        'orders.Order',
+
+    product_inventory = models.ForeignKey(
+        'PointInventory',
+        on_delete=models.CASCADE,
+        verbose_name="Инвентарь"
+    )
+    from_point = models.ForeignKey(
+        Point,
         on_delete=models.SET_NULL,
         null=True,
-        blank=True,
-        verbose_name='Связанный заказ'
+        related_name='stock_out'
     )
-    description = models.TextField(blank=True, null=True, verbose_name='Описание')
+    to_point = models.ForeignKey(
+        Point,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='stock_in'
+    )
+    quantity = models.PositiveIntegerField("Количество")
+    timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.get_movement_type_display()} | {self.product_inventory.product.name} — {self.quantity} шт."
-
-    class Meta:
-        verbose_name = "Движение товара"
-        verbose_name_plural = "Движения товаров"
-        ordering = ['-timestamp']
+        return f"{self.quantity} шт. из {self.from_point} в {self.to_point}"

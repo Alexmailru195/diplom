@@ -1,83 +1,138 @@
 {% extends "base.html" %}
-{% block title %}Подтвердите заказ{% endblock %}
+{% block title %}Подтверждение заказа{% endblock %}
 {% block content %}
 <div class="container mt-5">
-    <h2>Подтверждение заказа</h2>
+    <h2 class="mb-4 text-center">Подтвердите заказ</h2>
 
-    {% if form.errors %}
-        <div class="alert alert-danger">
-            {% for error in form.non_field_errors %}
-                <p>{{ error }}</p>
-            {% endfor %}
-        </div>
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-dismissible fade show alert-{{ message.tags }}">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
     {% endif %}
 
-    <form method="post" id="order-form">
+    <form method="post" id="order-form" class="needs-validation" novalidate>
         {% csrf_token %}
-        {{ form.as_p }}
 
-        <div id="delivery-fields">
-            <h4>Данные доставки</h4>
-            <div class="mb-3">
-                <label for="{{ form.address.id_for_label }}" class="form-label">Адрес доставки</label>
-                {{ form.address }}
-                {{ form.address.errors }}
-            </div>
-
-            <div class="mb-3">
-                <label for="id_delivery_date" class="form-label">Желаемая дата доставки</label>
-                <input type="date" name="delivery_date" id="id_delivery_date" class="form-control">
-            </div>
-
-            <div class="mb-3">
-                <label for="id_delivery_time" class="form-label">Желаемое время доставки</label>
-                <input type="time" name="delivery_time" id="id_delivery_time" class="form-control">
-            </div>
+        <!-- Тип доставки -->
+        <div class="mb-3">
+            <label for="id_delivery_type" class="form-label">Тип доставки:</label>
+            {{ form.delivery_type }}
         </div>
 
+        <!-- Пункт самовывоза -->
         <div id="pickup-fields" style="display: none;">
-            <h4>Пункт самовывоза</h4>
-            <select name="pickup_point" class="form-select mb-3">
-                {% for point in pickup_points %}
-                <option value="{{ point.0 }}">{{ point.1 }}</option>
-                {% endfor %}
-            </select>
+            <div class="mb-3">
+                <label for="id_pickup_point" class="form-label">Пункт самовывоза:</label>
+                <select name="pickup_point" id="id_pickup_point" class="form-select">
+                    <option value="">-- Выберите пункт --</option>
+                    {% for point in points %}
+                    <option value="{{ point.id }}">{{ point.name }} — {{ point.address }}</option>
+                    {% endfor %}
+                </select>
+            </div>
         </div>
 
-        <button type="submit" class="btn btn-success">Оформить заказ</button>
+        <!-- Адрес доставки -->
+        <div id="delivery-fields">
+            <div class="mb-3">
+                <label for="id_address" class="form-label">Адрес доставки:</label>
+                {{form.address}}
+            </div>
+            <div class="mb-3">
+                <label for="id_delivery_date" class="form-label">Дата доставки:</label>
+                {{ form.delivery_date }}
+                {% if form.errors %}
+                {% if 'delivery_date' in form.errors%}
+                <div class="alert alert-danger mt-2">
+                    {{ form.errors|dictsort:"field"|join:"<br>" }}
+                </div>
+                {% endif %}
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <label for="id_delivery_time" class="form-label">Время доставки:</label>
+                {{ form.delivery_time }}
+                {% if form.errors %}
+                {% if 'delivery_time' in form.errors%}
+                <div class="alert alert-danger mt-2">
+                    {{ form.errors|dictsort:"field"|join:"<br>" }}
+                </div>
+                {% endif %}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Имя -->
+        <div class="mb-3">
+            <label for="id_name" class="form-label">Имя:</label>
+            {{form.name}}
+        </div>
+
+        <!-- Телефон -->
+        <div class="mb-3">
+            <label for="id_phone" class="form-label">Телефон:</label>
+            {{form.phone}}
+        </div>
+
+        <!-- Email -->
+        <div class="mb-3">
+            <label for="id_email" class="form-label">Email (необязательно):</label>
+            {{ form.email }}
+        </div>
+
+        <!-- Способ оплаты -->
+        <div class="mb-3">
+            <label for="id_payment_type" class="form-label">Способ оплаты:</label>
+            {{form.payment_type}}
+        </div>
+
+        <!-- Корзина -->
+        <hr>
+        <ul class="list-group mb-4">
+            {% for item in cart_items %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                {{ item.product.name }} × {{ item.quantity }}
+                <span class="badge bg-primary rounded-pill">{{ item.total|floatformat:"-2"}} ₽</span>
+            </li>
+            {% endfor %}
+            <li class="list-group-item d-flex justify-content-between align-items-center fw-bold">
+                Итого:
+                <span class="badge bg-success rounded-pill">{{ total_price|floatformat:"-2"}} ₽</span>
+            </li>
+        </ul>
+
+        <!-- Кнопка подтверждения -->
+        <div class="d-grid">
+            <button type="submit" class="btn btn-success btn-lg">Подтвердить заказ</button>
+        </div>
     </form>
-
-    <hr class="my-4">
-
-    <h4>Ваша корзина</h4>
-    <ul>
-        {% for item in cart_items %}
-        <li>{{ item.product.name }} — {{ item.quantity }} × {{ item.product.price }} ₽ = {{ item.total }} ₽</li>
-        {% endfor %}
-    </ul>
-    <p><strong>Итого:</strong> {{ total_price }} ₽</p>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const deliveryType = document.querySelector("[name='delivery_type']");
-    const deliveryFields = document.getElementById("delivery-fields");
-    const pickupFields = document.getElementById("pickup-fields");
+    document.addEventListener('DOMContentLoaded', function () {
+        const deliveryType = document.getElementById('id_delivery_type');
+        const pickupFields = document.getElementById('pickup-fields');
+        const deliveryFields = document.getElementById('delivery-fields');
 
-    function toggleFields() {
-        if (deliveryType.value === 'pickup') {
-            deliveryFields.style.display = 'none';
-            pickupFields.style.display = 'block';
-        } else {
-            deliveryFields.style.display = 'block';
-            pickupFields.style.display = 'none';
+        function toggleFields() {
+            if (deliveryType && deliveryType.value === 'pickup') {
+                pickupFields.style.display = 'block';
+                deliveryFields.style.display = 'none';
+            } else {
+                pickupFields.style.display = 'none';
+                deliveryFields.style.display = 'block';
+            }
         }
-    }
 
-    if (deliveryType) {
-        deliveryType.addEventListener('change', toggleFields);
-        toggleFields();  // Вызываем при загрузке страницы
-    }
-});
+        if (deliveryType) {
+            deliveryType.addEventListener('change', toggleFields);
+            toggleFields();  // Вызов при загрузке
+        }
+    });
 </script>
 {% endblock %}

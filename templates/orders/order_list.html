@@ -1,17 +1,22 @@
 {% extends "base.html" %}
 {% block title %}Мои заказы{% endblock %}
 {% block content %}
-<h2>Ваши заказы</h2>
+<div class="container mt-5">
+    <h2>Ваши заказы</h2>
 
-{% if orders %}
-<ul>
-    {% for order in orders %}
-    <li><a href="{% url 'orders:order_detail' order.id %}">Заказ №{{ order.id }} — {{ order.created_at }}</a></li>
-    {% endfor %}
-</ul>
-{% else %}
-<p>У вас пока нет оформленных заказов.</p>
-{% endif %}
+    {% if orders %}
+        <ul class="list-group">
+            {% for order in orders %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <a href="{% url 'orders:order_detail' order.id %}">Заказ №{{ order.id }}</a>
+                    <small>{{ order.created_at|date:"d.m.Y H:i" }}</small>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>У вас пока нет оформленных заказов.</p>
+    {% endif %}
 
-<a href="{% url 'products:product_list' %}" class="btn btn-primary mt-3">Продолжить покупки</a>
+    <a href="{% url 'products:product_list' %}" class="btn btn-primary mt-3">Продолжить покупки</a>
+</div>
 {% endblock %}
