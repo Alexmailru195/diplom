@@ -1,8 +1,9 @@
 # orders/utils.py
 
-from cart.models import Cart, CartItem
-from .models import Order, OrderItem
 from django.db import transaction
+
+from cart.models import Cart
+from .models import Order, OrderItem
 
 
 def create_order_for_user(user, delivery_type, payment_type, address=None):

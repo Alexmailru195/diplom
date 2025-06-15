@@ -10,7 +10,7 @@
     {% if order.pickup_point %}
         <p><strong>Пункт самовывоза:</strong> {{ order.pickup_point.name }} — {{ order.pickup_point.address }}</p>
     {% else %}
-        <p><strong>Адрес доставки:</strong> {{ order.address }}</p>
+        <p><strong>Адрес доставки:</strong> {{order.address}}</p>
     {% endif %}
 
     <p><strong>Способ оплаты:</strong> {{ order.get_payment_type_display }}</p>
