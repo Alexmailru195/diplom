@@ -17,19 +17,40 @@ class Order(models.Model):
         ('cash', 'Наличные при получении'),
     )
 
+    TIME_SLOT_CHOICES = (
+        ('morning', 'Утро (9:00–13:00)'),
+        ('afternoon', 'День (13:00–17:00)'),
+    )
+
+    STATUS_CHOICES = (
+        ('created', 'Создан'),
+        ('accepted', 'Принят'),
+        ('collected', 'Собран'),
+        ('sent', 'Отправлен'),
+        ('delivered', 'Доставлен'),
+        ('cancelled', 'Отменён'),
+    )
+
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
-    name = models.CharField(max_length=100)
-    phone = models.CharField(max_length=20)
-    email = models.EmailField(blank=True, null=True)
-    address = models.TextField(blank=True, null=True)
-    delivery_type = models.CharField(max_length=10, choices=DELIVERY_CHOICES)
-    pickup_point = models.ForeignKey(Point, on_delete=models.SET_NULL, null=True, blank=True)
-    delivery_date = models.DateField(null=True, blank=True)
-    delivery_time = models.TimeField(null=True, blank=True)
-    payment_type = models.CharField(max_length=20, choices=PAYMENT_CHOICES)
-    status = models.CharField(max_length=20, default='created')
-    total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    created_at = models.DateTimeField(auto_now_add=True)
+    manager = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='orders_as_manager'
+    )
+    name = models.CharField(max_length=100, verbose_name="Имя")
+    phone = models.CharField(max_length=20, verbose_name="Телефон")
+    email = models.EmailField(blank=True, null=True, verbose_name="Email")
+    address = models.TextField(blank=True, null=True, verbose_name="Адрес доставки")
+    delivery_type = models.CharField(max_length=10, choices=DELIVERY_CHOICES, verbose_name="Тип доставки")
+    pickup_point = models.ForeignKey(Point, on_delete=models.SET_NULL, null=True, blank=True, related_name='orders', verbose_name="Пункт самовывоза")
+    delivery_date = models.DateField(null=True, blank=True, verbose_name="Дата доставки")
+    time_slot = models.CharField(max_length=10, choices=TIME_SLOT_CHOICES, blank=True, null=True, verbose_name="Время доставки")
+    payment_type = models.CharField(max_length=20, choices=PAYMENT_CHOICES, verbose_name="Способ оплаты")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='created')
+    total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Итоговая сумма")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
 
     def __str__(self):
         return f"Заказ #{self.id} от {self.name}"
@@ -40,14 +61,18 @@ class Order(models.Model):
 
 
 class OrderItem(models.Model):
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
-    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True)
-    quantity = models.PositiveIntegerField(default=1)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items', verbose_name="Заказ")
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, verbose_name="Продукт")
+    quantity = models.PositiveIntegerField(default=1, verbose_name="Количество")
+    price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Цена")
 
     @property
     def total(self):
         return self.quantity * self.price
 
     def __str__(self):
-        return f"{self.product.name} × {self.quantity}"
+        return f"{self.product.name} x {self.quantity} — Заказ №{self.order.id}"
+
+    class Meta:
+        verbose_name = "Позиция заказа"
+        verbose_name_plural = "Позиции заказов"

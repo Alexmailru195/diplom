@@ -41,28 +41,22 @@
                 <label for="id_address" class="form-label">Адрес доставки:</label>
                 {{form.address}}
             </div>
+
+            <!-- Дата доставки -->
             <div class="mb-3">
                 <label for="id_delivery_date" class="form-label">Дата доставки:</label>
-                {{ form.delivery_date }}
-                {% if form.errors %}
-                {% if 'delivery_date' in form.errors%}
-                <div class="alert alert-danger mt-2">
-                    {{ form.errors|dictsort:"field"|join:"<br>" }}
-                </div>
-                {% endif %}
-                {% endif %}
+                <input type="text" name="delivery_date" id="id_delivery_date" class="form-control"
+                       placeholder="гггг-мм-дд" required>
             </div>
 
+            <!-- Время доставки как временной слот -->
             <div class="mb-3">
-                <label for="id_delivery_time" class="form-label">Время доставки:</label>
-                {{ form.delivery_time }}
-                {% if form.errors %}
-                {% if 'delivery_time' in form.errors%}
-                <div class="alert alert-danger mt-2">
-                    {{ form.errors|dictsort:"field"|join:"<br>" }}
-                </div>
-                {% endif %}
-                {% endif %}
+                <label for="id_time_slot" class="form-label">Время доставки:</label>
+                <select name="time_slot" id="id_time_slot" class="form-select" required>
+                    <option value="">-- Выберите время --</option>
+                    <option value="morning">Утро (9:00–13:00)</option>
+                    <option value="afternoon">День (13:00–17:00)</option>
+                </select>
             </div>
         </div>
 
@@ -81,7 +75,7 @@
         <!-- Email -->
         <div class="mb-3">
             <label for="id_email" class="form-label">Email (необязательно):</label>
-            {{ form.email }}
+            {{form.email}}
         </div>
 
         <!-- Способ оплаты -->

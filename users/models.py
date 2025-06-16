@@ -1,7 +1,7 @@
 # users/models.py
 
-from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 
@@ -13,7 +13,7 @@ class User(AbstractUser):
     ROLE_CHOICES = (
         ('customer', 'Покупатель'),
         ('manager', 'Менеджер'),
-        ('admin', 'Администратор')
+        ('admin', 'Администратор'),
     )
 
     role = models.CharField(
@@ -24,12 +24,6 @@ class User(AbstractUser):
     )
 
     phone = models.CharField(_('Телефон'), max_length=30, blank=True, null=True)
-    avatar = models.ImageField(
-        _('Аватар'),
-        upload_to='avatars/',
-        blank=True,
-        null=True
-    )
     date_joined = models.DateTimeField(_('Дата регистрации'), auto_now_add=True)
     last_login = models.DateTimeField(_('Последний вход'), auto_now=True)
 

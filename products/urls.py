@@ -5,7 +5,7 @@ from rest_framework.routers import SimpleRouter
 
 from products.api_views import CategoryListView, CategoryProductListView, ProductAttributeListView, \
     ProductAttributeValueListView
-from products.views import product_detail_view, create_category, create_product
+from products.views import product_detail_view, create_category, create_product, search_view
 from .views import product_list_view
 from . import views
 
@@ -19,6 +19,7 @@ app_name = 'products'
 
 urlpatterns = [
     path('', product_list_view, name='product_list'),
+    path('search/', search_view, name='search'),
     path('<int:pk>/', product_detail_view, name='product_detail'),
 
     # Категории

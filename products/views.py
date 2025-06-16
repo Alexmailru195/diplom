@@ -1,31 +1,37 @@
 # products/views.py
-
+from django.contrib.auth.decorators import login_required
+from django.db.models import Sum
 from django.shortcuts import render, get_object_or_404, redirect
 
 from inventory.models import PointInventory
-from . import models
-from .models import Product, Category, ProductImage
-from django.db.models import Count
 from .forms import CategoryForm, ProductForm, ProductImageForm
-from django.db.models import Sum
+from .models import Product, Category, ProductImage
 
 
+@login_required
 def product_list_view(request):
+    query = request.GET.get('q', '')
     category_id = request.GET.get('category')
-    selected_category = None
-    products = []
 
-    if category_id and category_id.isdigit():
-        selected_category = Category.objects.filter(id=int(category_id)).first()
-        if selected_category:
-            products = Product.objects.filter(category=selected_category)
-
+    # Получаем все категории
     categories = Category.objects.all()
+
+    # Фильтруем товары
+    if query:
+        products = Product.objects.filter(name__icontains=query)
+        selected_category = None
+    elif category_id:
+        selected_category = get_object_or_404(Category, id=category_id)
+        products = selected_category.products.all()
+    else:
+        selected_category = None
+        products = Product.objects.all()
 
     return render(request, 'products/product_list.html', {
         'products': products,
         'categories': categories,
         'selected_category': selected_category,
+        'query': query,
     })
 
 
@@ -54,8 +60,6 @@ def product_detail_view(request, pk):
         'attributes': attributes,
         'total_stock': total_stock
     })
-
-    return render(request, 'products/product_detail.html', context)
 
 
 def category_product_list_view(request, category_pk):
@@ -125,4 +129,17 @@ def category_detail_view(request, category_id):
     return render(request, 'products/product_list.html', {
         'products': products,
         'category': category
+    })
+
+
+def search_view(request):
+    query = request.GET.get('q', '')
+    products = []
+
+    if query:
+        products = Product.objects.filter(name__icontains=query)
+
+    return render(request, 'products/product_list.html', {
+        'products': products,
+        'query': query
     })

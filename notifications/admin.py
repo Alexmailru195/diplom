@@ -24,10 +24,10 @@ class NotificationAdmin(admin.ModelAdmin):
     ordering = ('-created_at',)
     actions = ['mark_as_read', 'mark_as_unread']
 
-    def mark_as_read(self, request, queryset):
+    def mark_as_read(self, queryset):
         queryset.update(read=True)
     mark_as_read.short_description = "Отметить как прочитанные"
 
-    def mark_as_unread(self, request, queryset):
+    def mark_as_unread(self, queryset):
         queryset.update(read=False)
     mark_as_unread.short_description = "Отметить как непрочитанные"

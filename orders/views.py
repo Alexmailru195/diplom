@@ -2,13 +2,14 @@
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-from django.http import Http404
 from django.shortcuts import render, redirect, get_object_or_404
-from django.db import transaction
 from django.contrib import messages
-from django.utils.dateparse import parse_date, parse_time
-from cart.models import CartItem
+from django.db import transaction
+from django.http import Http404
+
+import pos
 from .models import Order, OrderItem
+from cart.models import CartItem
 from pos.models import Point
 from inventory.models import PointInventory
 from .forms import OrderConfirmForm
@@ -17,200 +18,112 @@ from .forms import OrderConfirmForm
 @login_required
 def order_list_view(request):
     """
-    Список заказов пользователя
+    Список всех заказов (для админов)
     """
+    if not request.user.is_superuser:
+        return redirect('orders:all_orders')
+
+    status_filter = request.GET.get('status')
+    orders = Order.objects.all().order_by('-created_at')
+
+    if status_filter:
+        orders = orders.filter(status=status_filter)
+
+    return render(request, 'orders/admin_order_list.html', {
+        'orders': orders,
+        'STATUS_CHOICES': [choice for choice in Order.STATUS_CHOICES],
+    })
+
+
+@login_required
+def all_orders_view(request):
+    """
+    Список всех заказов (для админов)
+    """
+    return order_list_view(request)
+
+
+@login_required
+def user_orders_view(request):
+    """
+    Список заказов текущего пользователя (мои заказы)
+    """
+    status_filter = request.GET.get('status')
     orders = Order.objects.filter(user=request.user).order_by('-created_at')
-    return render(request, 'orders/order_list.html', {'orders': orders})
+
+    if status_filter:
+        orders = orders.filter(status=status_filter)
+
+    return render(request, 'orders/user_order_list.html', {
+        'orders': orders,
+        'STATUS_CHOICES': [choice for choice in Order.STATUS_CHOICES],
+    })
 
 
 @login_required
 def order_detail_view(request, order_id):
     try:
-        order = Order.objects.get(id=order_id, user=request.user)
+        # Показываем заказ, если он принадлежит пользователю,
+        # или это админ, или менеджер точки
+        if request.user.is_superuser:
+            order = Order.objects.get(id=order_id)
+        elif request.user == pos.manager:
+            order = Order.objects.get(id=order_id)
+        else:
+            order = Order.objects.get(id=order_id, user=request.user)
+
     except Order.DoesNotExist:
-        raise Http404("Заказ не найден или доступ запрещён")
+        raise Http404("Заказ не найден или у вас нет прав на его просмотр")
+
     return render(request, 'orders/order_detail.html', {
         'order': order,
-        'order_items': order.items.all()
+        'order_items': order.items.all(),
     })
 
 
 @login_required
-def checkout_view(request):
-    cart_items = CartItem.objects.filter(cart__user=request.user).select_related('product')
-    if not cart_items:
-        messages.warning(request, "Корзина пуста")
-        return redirect('products:product_list')
-
-    total_price = sum(item.product.price * item.quantity for item in cart_items)
-    points = Point.objects.all()
-
-    if request.method == 'POST':
-        form = OrderConfirmForm(request.POST)
-        if form.is_valid():
-            delivery_type = form.cleaned_data.get('delivery_type')
-            pickup_point_id = form.cleaned_data.get('pickup_point')  # ← это id, а не объект
-            address = form.cleaned_data.get('address', '')
-            delivery_date_str = form.cleaned_data.get('delivery_date')
-            delivery_time_str = form.cleaned_data.get('delivery_time')
-
-            try:
-                with transaction.atomic():
-                    delivery_date = parse_date(delivery_date_str) if delivery_date_str else None
-                    delivery_time = parse_time(delivery_time_str) if delivery_time_str else None
-
-                    if delivery_date_str and not delivery_date:
-                        messages.error(request, "Неверная дата доставки")
-                        return redirect('orders:checkout')
-                    if delivery_time_str and not delivery_time:
-                        messages.error(request, "Неверное время доставки")
-                        return redirect('orders:checkout')
-
-                    # Создаем заказ
-                    order = Order.objects.create(
-                        user=request.user,
-                        name=form.cleaned_data['name'],
-                        phone=form.cleaned_data['phone'],
-                        email=form.cleaned_data.get('email'),
-                        delivery_type=delivery_type,
-                        address=address,
-                        delivery_date=delivery_date,
-                        delivery_time=delivery_time,
-                        status='created',
-                        total_price=total_price
-                    )
-
-                    # Устанавливаем пункт самовывоза
-                    if delivery_type == 'pickup' and pickup_point_id:
-                        try:
-                            pickup_point = Point.objects.get(id=pickup_point_id)
-                            order.pickup_point = pickup_point
-                            order.save()
-                        except Point.DoesNotExist:
-                            messages.error(request, "Точка выдачи не найдена")
-                            return redirect('orders:checkout')
-
-                    # Переносим товары в заказ
-                    for cart_item in cart_items:
-                        product = cart_item.product
-                        quantity = cart_item.quantity
-                        OrderItem.objects.create(
-                            order=order,
-                            product=product,
-                            quantity=quantity,
-                            price=product.price
-                        )
-
-                    # Списание остатков
-                    for cart_item in cart_items:
-                        product = cart_item.product
-                        quantity = cart_item.quantity
-
-                        if delivery_type == 'pickup' and pickup_point_id:
-                            pinv = PointInventory.objects.select_for_update().get(
-                                product=product,
-                                point_id=pickup_point_id
-                            )
-                            if pinv.quantity < quantity:
-                                messages.error(request, f"Недостаточно '{product.name}' на пункте выдачи")
-                                return redirect('orders:checkout')
-                            pinv.quantity -= quantity
-                            pinv.save()
-
-                        elif delivery_type == 'courier':
-                            warehouse = Point.objects.filter(is_warehouse=True).first()
-                            if not warehouse:
-                                messages.error(request, "Нет доступных складов для доставки")
-                                return redirect('orders:checkout')
-
-                            pinv = PointInventory.objects.select_for_update().get(
-                                product=product,
-                                point_id=warehouse.id
-                            )
-                            if pinv.quantity < quantity:
-                                best_inv = PointInventory.objects.select_for_update().filter(
-                                    product=product,
-                                    quantity__gte=quantity
-                                ).order_by('-quantity').first()
-
-                                if best_inv:
-                                    best_inv.quantity -= quantity
-                                    best_inv.save()
-                                else:
-                                    messages.error(request, f"Нет достаточного количества '{product.name}' для доставки")
-                                    return redirect('orders:checkout')
-
-                            pinv.quantity -= quantity
-                            pinv.save()
-
-                    # Очищаем корзину
-                    cart_items.delete()
-                    messages.success(request, "Заказ оформлен успешно!")
-                    return redirect('orders:order_detail', order_id=order.id)
-
-            except Exception as e:
-                messages.error(request, f"Системная ошибка: {str(e)}")
-                return redirect('orders:checkout')
-
-        else:
-            messages.error(request, "Форма заполнена неверно")
-            print(form.errors)
-            return redirect('orders:checkout')
-
-    else:
-        form = OrderConfirmForm()
-        return render(request, 'orders/checkout.html', {
-            'form': form,
-            'cart_items': cart_items,
-            'total_price': total_price,
-            'points': points
-        })
-
-
-@login_required(login_url='users:login')
 def order_confirm_view(request):
+    """
+    Оформление заказа
+    """
     cart_items = CartItem.objects.filter(cart__user=request.user).select_related('product')
+
     if not cart_items:
-        messages.warning(request, "Корзина пуста")
+        messages.warning(request, "Ваша корзина пуста.")
         return redirect('products:product_list')
 
     total_price = sum(item.product.price * item.quantity for item in cart_items)
-    points = Point.objects.all()
 
     if request.method == 'POST':
         form = OrderConfirmForm(request.POST)
         if form.is_valid():
-            delivery_type = form.cleaned_data.get('delivery_type')
-            pickup_point_id = form.cleaned_data.get('pickup_point')
-            address = form.cleaned_data.get('address', '')
+            name = form.cleaned_data['name']
+            phone = form.cleaned_data['phone']
+            email = form.cleaned_data.get('email')
+            delivery_type = form.cleaned_data['delivery_type']
+            address = form.cleaned_data.get('address') if delivery_type == 'courier' else ''
             delivery_date_str = form.cleaned_data.get('delivery_date')
-            delivery_time_str = form.cleaned_data.get('delivery_time')
+            pickup_point_id = form.cleaned_data.get('pickup_point')
 
             try:
                 with transaction.atomic():
-                    delivery_date = parse_date(delivery_date_str) if delivery_date_str else None
-                    delivery_time = parse_time(delivery_time_str) if delivery_time_str else None
-
-                    if delivery_date_str and not delivery_date:
-                        raise ValidationError("Неверная дата доставки")
-                    if delivery_time_str and not delivery_time:
-                        raise ValidationError("Неверное время доставки")
+                    from datetime import date, time
+                    delivery_date = date.fromisoformat(delivery_date_str) if delivery_date_str else None
 
                     # Создаем заказ
                     order = Order.objects.create(
                         user=request.user,
-                        name=form.cleaned_data['name'],
-                        phone=form.cleaned_data['phone'],
-                        email=form.cleaned_data.get('email'),
+                        name=name,
+                        phone=phone,
+                        email=email,
                         delivery_type=delivery_type,
                         address=address,
                         delivery_date=delivery_date,
-                        delivery_time=delivery_time,
                         status='created',
                         total_price=total_price
                     )
 
-                    # Устанавливаем пункт самовывоза
+                    # Устанавливаем точку самовывоза
                     if delivery_type == 'pickup' and pickup_point_id:
                         point = Point.objects.get(id=pickup_point_id)
                         order.pickup_point = point
@@ -228,19 +141,11 @@ def order_confirm_view(request):
                             price=product.price
                         )
 
-                    # Списание остатков
-                    for cart_item in cart_items:
-                        product = cart_item.product
-                        quantity = cart_item.quantity
-
+                        # Списание остатков
                         if delivery_type == 'pickup' and pickup_point_id:
-                            pinv = PointInventory.objects.select_for_update().get(
-                                product=product,
-                                point_id=pickup_point_id
-                            )
+                            pinv = PointInventory.objects.select_for_update().get(product=product, point_id=pickup_point_id)
                             if pinv.quantity < quantity:
-                                raise ValidationError(f"Недостаточно '{product.name}' на пункте выдачи")
-
+                                raise ValidationError(f"Недостаточно '{product.name}' на пункте самовывоза")
                             pinv.quantity -= quantity
                             pinv.save()
                         elif delivery_type == 'courier':
@@ -248,22 +153,17 @@ def order_confirm_view(request):
                             if not warehouse:
                                 raise ValidationError("Нет доступных складов для доставки")
 
-                            pinv = PointInventory.objects.select_for_update().get(
-                                product=product,
-                                point_id=warehouse.id
-                            )
+                            pinv = PointInventory.objects.select_for_update().get(product=product, point=warehouse)
                             if pinv.quantity < quantity:
                                 best_inv = PointInventory.objects.select_for_update().filter(
                                     product=product,
                                     quantity__gte=quantity
                                 ).order_by('-quantity').first()
-
                                 if best_inv:
                                     best_inv.quantity -= quantity
                                     best_inv.save()
                                 else:
                                     raise ValidationError(f"Нет достаточного количества '{product.name}' для доставки")
-
                             pinv.quantity -= quantity
                             pinv.save()
 
@@ -273,26 +173,91 @@ def order_confirm_view(request):
                     messages.success(request, "Заказ оформлен успешно!")
                     return redirect('orders:order_detail', order_id=order.id)
 
-            except Point.DoesNotExist:
-                messages.error(request, "Пункт самовывоза не найден")
-                return redirect('orders:checkout')
-            except ValidationError as e:
-                messages.error(request, str(e))
-                return redirect('orders:checkout')
             except Exception as e:
-                messages.error(request, f"Системная ошибка: {str(e)}")
+                messages.error(request, f"Ошибка при оформлении заказа: {str(e)}")
                 return redirect('orders:checkout')
-
-        else:
-            messages.error(request, "Форма заполнена неверно")
-            print(form.errors)
-            return redirect('orders:checkout')
 
     else:
         form = OrderConfirmForm()
-        return render(request, 'orders/order_confirm.html', {
-            'form': form,
-            'cart_items': cart_items,
-            'total_price': total_price,
-            'points': points
-        })
+
+    points = Point.objects.all()
+    return render(request, 'orders/checkout.html', {
+        'form': form,
+        'cart_items': cart_items,
+        'total_price': total_price,
+        'points': points
+    })
+
+
+@login_required
+def update_order_status(request, order_id):
+    """
+    Обновление статуса заказа
+    """
+    order = get_object_or_404(Order, id=order_id)
+
+    # Статусы, которые нельзя менять
+    forbidden_statuses = ['cancelled', 'delivered']
+
+    if order.status in forbidden_statuses:
+        messages.warning(
+            request,
+            f"Заказ с статусом '{order.get_status_display()}' редактировать нельзя."
+        )
+        return redirect('orders:order_detail', order_id=order.id)
+
+    # Проверяем права
+    if not request.user.is_superuser and request.user != order.manager:
+        messages.error(request, "У вас нет прав на изменение этого заказа")
+        return redirect('orders:order_detail', order_id=order.id)
+
+    if request.method == 'POST':
+        new_status = request.POST.get('status')
+
+        valid_statuses = [key for key, _ in Order.STATUS_CHOICES]
+        if new_status in valid_statuses:
+            old_status = order.status
+            order.status = new_status
+            order.save()
+
+            # Возвращаем товар при отмене
+            if new_status == 'cancelled':
+                try:
+                    with transaction.atomic():
+                        for item in order.items.all():
+                            product = item.product
+                            quantity = item.quantity
+
+                            if order.delivery_type == 'pickup' and order.pickup_point:
+                                point = order.pickup_point
+                                pinv = PointInventory.objects.select_for_update().get(product=product, point=point)
+                                pinv.quantity += quantity
+                                pinv.save()
+                            elif order.delivery_type == 'courier':
+                                warehouse = Point.objects.filter(is_warehouse=True).first()
+                                if not warehouse:
+                                    raise Exception("Нет доступного склада")
+
+                                pinv = PointInventory.objects.select_for_update().get(product=product, point=warehouse)
+                                pinv.quantity += quantity
+                                pinv.save()
+
+                except Exception as e:
+                    messages.error(request, f"Ошибка возврата товара: {str(e)}")
+                    order.status = old_status  # Откатываем статус
+                    order.save()
+                    return redirect('orders:order_detail', order_id=order.id)
+
+            messages.success(request, f"Статус заказа изменён на {order.get_status_display()}")
+        else:
+            messages.error(request, "Неверный статус")
+
+    return redirect('orders:order_detail', order_id=order_id)
+
+
+@login_required
+def profile_orders_view(request):
+    """
+    Отображение заказов в профиле
+    """
+    return redirect('orders:user_orders')

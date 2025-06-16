@@ -1,10 +1,11 @@
 # users/views.py
 
-from django.shortcuts import render, redirect
+from django.contrib import messages
 from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from .forms import RegisterForm, LoginForm, ProfileForm, ChangePasswordForm
+from django.shortcuts import render, redirect
+
+from .forms import RegisterForm, LoginForm, ChangePasswordForm, ProfileUpdateForm
 
 
 def register_view(request):
@@ -54,19 +55,6 @@ def logout_view(request):
     messages.info(request, "Вы вышли из аккаунта")
     return redirect('home')
 
-
-@login_required
-def profile_view(request):
-    is_moderator = False
-    if request.user.groups.filter(name='Модераторы').exists():
-        is_moderator = True
-
-    return render(request, 'users/profile.html', {
-        'user': request.user,
-        'is_moderator': is_moderator
-    })
-
-
 @login_required
 def change_password_view(request):
     """
@@ -84,4 +72,26 @@ def change_password_view(request):
 
     return render(request, 'users/change_password.html', {
         'form': password_form
+    })
+
+
+@login_required
+def profile_view(request):
+    """
+    Отображение и редактирование профиля
+    """
+    if request.method == 'POST':
+        form = ProfileUpdateForm(request.POST, instance=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Профиль успешно обновлён!')
+            return redirect('users:profile')
+        else:
+            messages.error(request, 'Ошибка при обновлении профиля.')
+            print(form.errors)  # ← Для отладки
+    else:
+        form = ProfileUpdateForm(instance=request.user)
+
+    return render(request, 'users/profile.html', {
+        'form': form,
     })

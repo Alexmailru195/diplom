@@ -1,7 +1,8 @@
 # users/forms.py
 
 from django import forms
-from django.contrib.auth.forms import UserCreationForm, UserChangeForm, AuthenticationForm
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm, UserChangeForm
+
 from .models import User
 
 
@@ -72,15 +73,13 @@ class ProfileForm(forms.ModelForm):
     """
     username = forms.CharField(disabled=True, label='Имя пользователя')
     email = forms.EmailField(label='Email', disabled=True)
-    avatar = forms.ImageField(label='Аватар', required=False)
-
     first_name = forms.CharField(label='Имя', required=False)
     last_name = forms.CharField(label='Фамилия', required=False)
     phone = forms.CharField(label='Телефон', required=False)
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'first_name', 'last_name', 'phone', 'avatar']
+        fields = ['username', 'email', 'first_name', 'last_name', 'phone']
 
 
 class ChangePasswordForm(forms.Form):
@@ -128,3 +127,14 @@ class ChangePasswordForm(forms.Form):
         if commit:
             user.save()
         return user
+
+
+class ProfileUpdateForm(UserChangeForm):
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'phone']
+
+class CustomUserChangeForm(UserChangeForm):
+    class Meta:
+        model = User
+        fields = ['username', 'first_name', 'last_name', 'email']

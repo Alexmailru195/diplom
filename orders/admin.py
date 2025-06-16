@@ -12,7 +12,7 @@ class OrderItemInline(admin.TabularInline):
 
     @admin.display(description='Сумма')
     def total(self, obj):
-        return obj.total
+        return obj.quantity * obj.price
 
 
 @admin.register(Order)
@@ -45,6 +45,33 @@ class OrderAdmin(admin.ModelAdmin):
             'fields': ('total_price', 'created_at')
         }),
     )
+
+    def get_queryset(self, request):
+        """
+        Показываем только те заказы, которые назначены менеджеру точки.
+        Если пользователь — суперпользователь, показываем все.
+        """
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        else:
+            return qs.filter(manager=request.user)
+
+    def has_change_permission(self, request, obj=None):
+        """
+        Позволяем редактировать заказ только его менеджеру или администратору.
+        """
+        if not request.user.is_superuser and obj and obj.manager != request.user:
+            return False
+        return super().has_change_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        """
+        Позволяем удалять заказ только его менеджеру или администратору.
+        """
+        if not request.user.is_superuser and obj and obj.manager != request.user:
+            return False
+        return super().has_delete_permission(request, obj)
 
 
 @admin.register(OrderItem)
