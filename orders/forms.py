@@ -59,11 +59,7 @@ class OrderConfirmForm(forms.Form):
         label="Email (необязательно)",
         widget=forms.EmailInput(attrs={'placeholder': 'ivanov@example.com'})
     )
-    payment_type = forms.ChoiceField(
-        choices=PAYMENT_CHOICES,
-        label="Способ оплаты",
-        widget=forms.Select(attrs={'id': 'id_payment_type'})
-    )
+    payment_type = forms.ChoiceField(choices=PAYMENT_CHOICES)
 
     def clean(self):
         cleaned_data = super().clean()

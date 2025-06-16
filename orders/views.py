@@ -1,11 +1,16 @@
 # orders/views.py
-
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, PermissionDenied
+from django.core.mail import send_mail
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.db import transaction
 from django.http import Http404
+from django.template.loader import render_to_string
+from django.urls import reverse
+from django.utils.html import strip_tags
+from django.views.decorators.csrf import csrf_exempt
 
 import pos
 from .models import Order, OrderItem
@@ -63,17 +68,15 @@ def user_orders_view(request):
 @login_required
 def order_detail_view(request, order_id):
     try:
-        # Показываем заказ, если он принадлежит пользователю,
-        # или это админ, или менеджер точки
-        if request.user.is_superuser:
-            order = Order.objects.get(id=order_id)
-        elif request.user == pos.manager:
-            order = Order.objects.get(id=order_id)
-        else:
-            order = Order.objects.get(id=order_id, user=request.user)
-
+        order = Order.objects.get(id=order_id)
     except Order.DoesNotExist:
-        raise Http404("Заказ не найден или у вас нет прав на его просмотр")
+        raise Http404("Заказ не найден")
+
+    # Проверяем права на просмотр заказа
+    if not request.user.is_superuser and \
+       request.user != order.manager and \
+       request.user != order.user:
+        raise PermissionDenied("У вас нет прав на просмотр этого заказа")
 
     return render(request, 'orders/order_detail.html', {
         'order': order,
@@ -104,6 +107,7 @@ def order_confirm_view(request):
             address = form.cleaned_data.get('address') if delivery_type == 'courier' else ''
             delivery_date_str = form.cleaned_data.get('delivery_date')
             pickup_point_id = form.cleaned_data.get('pickup_point')
+            payment_type = form.cleaned_data.get('payment_type')
 
             try:
                 with transaction.atomic():
@@ -120,7 +124,9 @@ def order_confirm_view(request):
                         address=address,
                         delivery_date=delivery_date,
                         status='created',
-                        total_price=total_price
+                        total_price=total_price,
+                        payment_status = 'pending',
+                        payment_type = payment_type,
                     )
 
                     # Устанавливаем точку самовывоза
@@ -170,6 +176,28 @@ def order_confirm_view(request):
                     # Очищаем корзину
                     cart_items.delete()
 
+                    # Отправляем email только при онлайн-оплате
+                    payment_url = request.build_absolute_uri(
+                        reverse('orders:payment_process', args=[order.id])
+                    )
+
+                    html_message = render_to_string('orders/payment_confirmation_email.html', {
+                        'order': order,
+                        'payment_url': payment_url
+                    })
+
+                    plain_message = strip_tags(html_message)
+
+                    send_mail(
+                        subject=f"Подтверждение заказа #{order.id}",
+                        message=plain_message,
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[request.user.email],
+                        html_message=html_message,
+                        fail_silently=False
+                    )
+
+                    # Если оплата наличными — сразу считаем заказ оформленным
                     messages.success(request, "Заказ оформлен успешно!")
                     return redirect('orders:order_detail', order_id=order.id)
 
@@ -261,3 +289,58 @@ def profile_orders_view(request):
     Отображение заказов в профиле
     """
     return redirect('orders:user_orders')
+
+
+@login_required
+def payment_confirmation(request, order_id):
+    """
+    Подтверждение оплаты (эмуляция)
+    """
+    try:
+        order = Order.objects.get(id=order_id, user=request.user)
+    except Order.DoesNotExist:
+        messages.warning(request, "Заказ не найден.")
+        return redirect('orders:user_orders')
+
+    if request.method == 'POST':
+        order.status = 'accepted'
+        order.payment_status = 'paid'
+        order.save()
+        messages.success(request, "Оплата прошла успешно! Ваш заказ принят к выполнению.")
+        return redirect('orders:order_detail', order_id=order.id)
+
+    return render(request, 'orders/payment_confirmation.html', {
+        'order': order
+    })
+
+
+@login_required
+def payment_process(request, order_id):
+    """
+    Эмуляция процесса оплаты
+    """
+    try:
+        order = get_object_or_404(Order, id=order_id, user=request.user)
+    except Exception as e:
+        messages.warning(request, "Заказ не найден.")
+        return redirect('orders:user_orders')
+
+    if request.method == 'POST':
+        card_number = request.POST.get('card_number')
+        if card_number and len(card_number) >= 16:
+            # Эмуляция успешной оплаты
+            order.status = 'accepted'
+            order.payment_status = 'paid'
+            order.save()
+            messages.success(request, "Оплата прошла успешно! Ваш заказ принят к выполнению.")
+        else:
+            messages.error(request, "Неверный формат номера карты.")
+
+    elif request.method == 'GET':
+        # Эмуляция оплаты через QR-код
+        order.status = 'accepted'
+        order.payment_status = 'paid'
+        order.save()
+        messages.success(request, "Оплата прошла успешно! Ваш заказ принят к выполнению.")
+
+    return redirect('orders:order_detail', order_id=order.id)

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px;">
+    <h3>Добрый день!</h3>
+
+    <p>Вы оформили заказ №{{ order.id }} на сумму {{ order.total_price|floatformat:"-2"}} ₽.</p>
+
+    <p><strong>Выбран способ оплаты:</strong> Онлайн</p>
+
+    <p>Пожалуйста, оплатите заказ:</p>
+
+    <!-- Эмуляция оплаты через QR-код -->
+    <p><strong>Или оплатите через QR-код:</strong></p>
+    <a href="{{ payment_url }}">
+        <img src="https://api.qrclient.com/qrcode?data={{ payment_url }}&size=200x200&color=007BFF&bgcolor=FFFFFF" alt="QR-код" width="200">
+    </a>
+
+    <p style="margin-top: 20px;">После подтверждения оплаты статус вашего заказа будет изменён.</p>
+</body>
+</html>

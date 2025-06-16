@@ -1,5 +1,6 @@
 # orders/urls.py
 
+from . import views
 from django.urls import path
 from .views import (
     order_confirm_view,
@@ -20,4 +21,6 @@ urlpatterns = [
     path('<int:order_id>/', order_detail_view, name='order_detail'),
     path('<int:order_id>/update-status/', update_order_status, name='update_order_status'),
     path('profile/', profile_orders_view, name='profile_orders'),
+    path('<int:order_id>/confirm-payment/', views.payment_confirmation, name='payment_confirmation'),
+    path('<int:order_id>/pay/', views.payment_process, name='payment_process'),
 ]

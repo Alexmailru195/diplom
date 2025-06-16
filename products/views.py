@@ -8,7 +8,6 @@ from .forms import CategoryForm, ProductForm, ProductImageForm
 from .models import Product, Category, ProductImage
 
 
-@login_required
 def product_list_view(request):
     query = request.GET.get('q', '')
     category_id = request.GET.get('category')

@@ -17,6 +17,12 @@ class Order(models.Model):
         ('cash', 'Наличные при получении'),
     )
 
+    PAYMENT_STATUS_CHOICES = (
+        ('pending', 'Ожидает оплаты'),
+        ('paid', 'Оплачен'),
+        ('failed', 'Неоплачен'),
+    )
+
     TIME_SLOT_CHOICES = (
         ('morning', 'Утро (9:00–13:00)'),
         ('afternoon', 'День (13:00–17:00)'),
@@ -47,7 +53,17 @@ class Order(models.Model):
     pickup_point = models.ForeignKey(Point, on_delete=models.SET_NULL, null=True, blank=True, related_name='orders', verbose_name="Пункт самовывоза")
     delivery_date = models.DateField(null=True, blank=True, verbose_name="Дата доставки")
     time_slot = models.CharField(max_length=10, choices=TIME_SLOT_CHOICES, blank=True, null=True, verbose_name="Время доставки")
-    payment_type = models.CharField(max_length=20, choices=PAYMENT_CHOICES, verbose_name="Способ оплаты")
+    payment_type = models.CharField(
+        max_length=10,
+        choices=PAYMENT_CHOICES,
+        verbose_name="Способ оплаты",
+    )
+
+    payment_status = models.CharField(
+        max_length=20,
+        choices=PAYMENT_STATUS_CHOICES,
+        default='pending'
+    )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='created')
     total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Итоговая сумма")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
