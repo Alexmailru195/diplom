@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px;">
+    <h3>Добрый день!</h3>
+
+    <p>Вы успешно зарегистрировались на сайте.</p>
+
+    <p><strong>Имя:</strong> {{ user.get_full_name }}</p>
+    <p><strong>Email:</strong> {{ user.email }}</p>
+    <p><strong>Логин:</strong> {{ user.username }}</p>
+
+    <p>Если это были не вы — обратитесь к администратору сайта.</p>
+
+    <p>Спасибо за регистрацию!</p>
+</body>
+</html>

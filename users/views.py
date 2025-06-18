@@ -1,30 +1,55 @@
 # users/views.py
-
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
+from django.core.mail import send_mail
 from django.shortcuts import render, redirect
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 
 from .forms import RegisterForm, LoginForm, ChangePasswordForm, ProfileUpdateForm
 
 
 def register_view(request):
-    """
-    Регистрация нового пользователя
-    """
+    if request.user.is_authenticated:
+        return redirect('products:product_list')
+
     if request.method == 'POST':
         form = RegisterForm(request.POST)
         if form.is_valid():
             user = form.save()
-            login(request, user)
-            messages.success(request, "Вы успешно зарегистрировались")
-            return redirect('products:product_list')
+
+            # Отправляем письмо о регистрации
+            subject = "Регистрация успешна"
+            html_message = render_to_string('users/email_registered.html', {
+                'user': user,
+                'site_url': request.build_absolute_uri('/')
+            })
+            plain_message = strip_tags(html_message)
+
+            try:
+                send_mail(
+                    subject=subject,
+                    message=plain_message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[user.email],
+                    html_message=html_message,
+                    fail_silently=False
+                )
+                messages.success(request, "Вы успешно зарегистрировались! Проверьте вашу почту.")
+            except Exception as e:
+                messages.warning(request, "Ошибка при отправке уведомления на почту.")
+
+            return redirect('users:login')
         else:
-            messages.error(request, "Ошибка регистрации")
+            messages.error(request, "Ошибка регистрации. Проверьте введённые данные.")
     else:
         form = RegisterForm()
 
-    return render(request, 'users/register.html', {'form': form})
+    return render(request, 'users/register.html', {
+        'form': form
+    })
 
 
 def login_view(request):
@@ -54,6 +79,7 @@ def logout_view(request):
     logout(request)
     messages.info(request, "Вы вышли из аккаунта")
     return redirect('home')
+
 
 @login_required
 def change_password_view(request):
@@ -88,7 +114,7 @@ def profile_view(request):
             return redirect('users:profile')
         else:
             messages.error(request, 'Ошибка при обновлении профиля.')
-            print(form.errors)  # ← Для отладки
+            print(form.errors)
     else:
         form = ProfileUpdateForm(instance=request.user)
 

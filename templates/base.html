@@ -86,17 +86,6 @@
     {% block content %}{% endblock %}
 </div>
 
-<!-- Сообщения Django -->
-{% if messages %}
-{% for message in messages %}
-<div class="container mt-3">
-    <div class="alert alert-{{ message.tags }}">
-        {{ message }}
-    </div>
-</div>
-{% endfor %}
-{% endif %}
-
 <!-- Bootstrap JS + Popper -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 

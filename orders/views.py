@@ -1,23 +1,59 @@
 # orders/views.py
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.core.mail import send_mail
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib import messages
 from django.db import transaction
 from django.http import Http404
+from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.html import strip_tags
-from django.views.decorators.csrf import csrf_exempt
 
-import pos
-from .models import Order, OrderItem
+from users.utils import send_order_update_email
 from cart.models import CartItem
-from pos.models import Point
 from inventory.models import PointInventory
+from pos.models import Point
 from .forms import OrderConfirmForm
+from .models import Order, OrderItem
+from orders.utils import send_order_status_email
+
+
+@login_required
+def update_order_status(request, order_id):
+    try:
+        order = Order.objects.get(id=order_id)
+    except Order.DoesNotExist:
+        messages.error(request, "Заказ не найден")
+        return redirect('orders:order_detail', order_id=order_id)
+
+    forbidden_statuses = ['cancelled', 'delivered']
+
+    if order.status in forbidden_statuses:
+        messages.warning(request, f"Заказ с статусом '{order.get_status_display()}' редактировать нельзя.")
+        return redirect('orders:order_detail', order_id=order_id)
+
+    if not request.user.is_superuser and request.user != order.manager and request.user != order.user:
+        messages.error(request, "У вас нет прав на изменение этого заказа")
+        return redirect('orders:order_detail', order_id=order_id)
+
+    if request.method == 'POST':
+        new_status = request.POST.get('status')
+
+        valid_statuses = [key for key, _ in Order.STATUS_CHOICES]
+        if new_status in valid_statuses:
+            old_status = order.status
+            order.status = new_status
+            order.save()
+
+            # Отправляем уведомление пользователю
+            send_order_status_email(order, order.user)  # ← отправляем email пользователю
+            messages.success(request, f"Статус заказа изменён на {order.get_status_display()}")
+        else:
+            messages.error(request, "Неверный статус")
+
+        return redirect('orders:order_detail', order_id=order_id)
 
 
 @login_required
@@ -248,6 +284,9 @@ def update_order_status(request, order_id):
             order.status = new_status
             order.save()
 
+            # Отправляем уведомление
+            send_order_status_email(order, order.user)
+
             # Возвращаем товар при отмене
             if new_status == 'cancelled':
                 try:
@@ -306,6 +345,7 @@ def payment_confirmation(request, order_id):
         order.status = 'accepted'
         order.payment_status = 'paid'
         order.save()
+        send_order_update_email(order, request.user)
         messages.success(request, "Оплата прошла успешно! Ваш заказ принят к выполнению.")
         return redirect('orders:order_detail', order_id=order.id)
 

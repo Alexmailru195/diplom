@@ -1,6 +1,8 @@
 # users/models.py
+import re
 
 from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -23,12 +25,16 @@ class User(AbstractUser):
         default='customer'
     )
 
-    phone = models.CharField(_('Телефон'), max_length=30, blank=True, null=True)
+    phone = models.CharField(max_length=30, blank=True, null=True)
+    email = models.EmailField(unique=True)
     date_joined = models.DateTimeField(_('Дата регистрации'), auto_now_add=True)
     last_login = models.DateTimeField(_('Последний вход'), auto_now=True)
 
     def __str__(self):
         return self.username
+
+    def clean(self):
+        super().clean()
 
     class Meta:
         verbose_name = "Пользователь"

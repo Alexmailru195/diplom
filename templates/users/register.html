@@ -5,44 +5,109 @@
     <div class="row justify-content-center">
         <div class="col-md-6">
             <h3 class="mb-4">Создайте новый аккаунт</h3>
-
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-
             <form method="post">
                 {% csrf_token %}
 
-                <!-- Имя пользователя -->
-                <div class="mb-3">
-                    <label for="id_username" class="form-label">Имя пользователя</label>
+                <!-- Логин -->
+                <div class="mb-3 {% if form.username.errors %}was-validated{% endif %}">
+                    <label for="id_username" class="form-label">Логин</label>
                     <input type="text" name="username" id="id_username"
-                           class="form-control" required autofocus />
+                           class="form-control {% if form.username.errors %}is-invalid{% endif %}" required autofocus />
                     <small class="form-text text-muted">Используйте только буквы, цифры и подчеркивания.</small>
+                    {% if form.username.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.username.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
                 </div>
 
                 <!-- Email -->
-                <div class="mb-3">
+                <div class="mb-3 {% if form.email.errors %}was-validated{% endif %}">
                     <label for="id_email" class="form-label">Email</label>
-                    <input type="email" name="email" id="id_email" class="form-control" required />
+                    <input type="email" name="email" id="id_email"
+                           class="form-control {% if form.email.errors %}is-invalid{% endif %}" required />
+                    {% if form.email.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.email.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Имя -->
+                <div class="mb-3 {% if form.first_name.errors %}was-validated{% endif %}">
+                    <label for="id_first_name" class="form-label">Имя</label>
+                    <input type="text" name="first_name" id="id_first_name"
+                           class="form-control {% if form.first_name.errors %}is-invalid{% endif %}" />
+                    {% if form.first_name.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.first_name.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Фамилия -->
+                <div class="mb-3 {% if form.last_name.errors %}was-validated{% endif %}">
+                    <label for="id_last_name" class="form-label">Фамилия</label>
+                    <input type="text" name="last_name" id="id_last_name"
+                           class="form-control {% if form.last_name.errors %}is-invalid{% endif %}" />
+                    {% if form.last_name.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.last_name.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Телефон (необязательно) -->
+                <div class="mb-3 {% if form.phone.errors %}was-validated{% endif %}">
+                    <label for="id_phone" class="form-label">Телефон (необязательно)</label>
+                    <input type="text" name="phone" id="id_phone"
+                           class="form-control {% if form.phone.errors %}is-invalid{% endif %}" />
+                    <small class="form-text text-muted">Например: +7 900 430-16-79</small>
+                    {% if form.phone.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.phone.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
                 </div>
 
                 <!-- Пароль -->
-                <div class="mb-3">
+                <div class="mb-3 {% if form.password1.errors %}was-validated{% endif %}">
                     <label for="id_password1" class="form-label">Пароль</label>
-                    <input type="password" name="password1" id="id_password1" class="form-control" required />
+                    <input type="password" name="password1" id="id_password1"
+                           class="form-control {% if form.password1.errors %}is-invalid{% endif %}" required />
                     <small class="form-text text-muted">Введите надёжный пароль.</small>
+                    {% if form.password1.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.password1.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
                 </div>
 
                 <!-- Подтверждение пароля -->
-                <div class="mb-3">
+                <div class="mb-3 {% if form.password2.errors %}was-validated{% endif %}">
                     <label for="id_password2" class="form-label">Подтвердите пароль</label>
-                    <input type="password" name="password2" id="id_password2" class="form-control" required />
+                    <input type="password" name="password2" id="id_password2"
+                           class="form-control {% if form.password2.errors %}is-invalid{% endif %}" required />
                     <small class="form-text text-muted">Повторите пароль.</small>
+                    {% if form.password2.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.password2.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
                 </div>
 
                 <!-- Кнопка регистрации -->
@@ -50,7 +115,7 @@
             </form>
 
             <!-- Ссылка на вход -->
-            <p class="mt-3">
+            <p class="mt-3 text-center">
                 Уже зарегистрированы?
                 <a href="{% url 'users:login' %}" class="text-decoration-none">Войдите</a>
             </p>

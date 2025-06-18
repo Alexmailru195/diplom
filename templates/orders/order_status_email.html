@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px;">
+    <h3>Добрый день!</h3>
+
+    <p>Статус вашего заказа №{{order.id}} был изменён:</p>
+
+    <ul class="list-group mb-3">
+        <li class="list-group-item"><strong>Новый статус:</strong> {{ order.get_status_display }}</li>
+        <li class="list-group-item"><strong>Дата создания:</strong> {{ order.created_at|date:"d.m.Y H:i" }}</li>
+        <li class="list-group-item"><strong>Итого:</strong> {{ order.total_price|floatformat:"-2"}} ₽</li>
+    </ul>
+
+    <p>Вы можете посмотреть детали заказа, перейдя по ссылке:</p>
+    <a href="{{ site_url }}{{ order.get_absolute_url }}" class="btn btn-primary">Посмотреть заказ</a>
+
+    <p>Если это были не вы — обратитесь к администратору.</p>
+</body>
+</html>
