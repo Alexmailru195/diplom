@@ -1,5 +1,6 @@
 # products/views.py
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.db.models import Sum
 from django.shortcuts import render, get_object_or_404, redirect
 
@@ -26,8 +27,18 @@ def product_list_view(request):
         selected_category = None
         products = Product.objects.all()
 
+    # Пагинация
+    paginator = Paginator(products, 6)  # ← important!
+    page_number = request.GET.get('page')
+    try:
+        page_obj = paginator.page(page_number)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
+
     return render(request, 'products/product_list.html', {
-        'products': products,
+        'products': page_obj,
         'categories': categories,
         'selected_category': selected_category,
         'query': query,

@@ -71,6 +71,44 @@
                         </div>
                     {% endfor %}
                 </div>
+
+                <!-- Пагинация -->
+                <nav aria-label="Pagination">
+                    <ul class="pagination justify-content-center mt-4">
+                        {% if products.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?q={{ query }}&category={{ category_id }}&page={{ products.previous_page_number }}">← Предыдущая</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">← Предыдущая</span>
+                            </li>
+                        {% endif %}
+
+                        {% for num in products.paginator.page_range %}
+                            {% if products.number == num %}
+                                <li class="page-item active" aria-current="page">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                            {% else %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?q={{ query }}&category={{ category_id }}&page={{ num }}">{{ num }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if products.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?q={{ query }}&category={{ category_id }}&page={{ products.next_page_number }}">Следующая →</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">Следующая →</span>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+
             {% else %}
                 {% if query %}
                     <p>По вашему запросу ничего не найдено.</p>
