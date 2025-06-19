@@ -14,7 +14,7 @@ class UserAdmin(admin.ModelAdmin):
             'fields': ('username', 'password')
         }),
         ('Персональная информация', {
-            'fields': ('first_name', 'last_name', 'email', 'phone', 'avatar')
+            'fields': ('first_name', 'last_name', 'email', 'phone')
         }),
         ('Права и роль', {
             'fields': ('role', 'is_active', 'is_staff', 'is_superuser')

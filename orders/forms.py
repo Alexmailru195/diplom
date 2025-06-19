@@ -70,3 +70,4 @@ class OrderConfirmForm(forms.Form):
             raise forms.ValidationError("Выберите пункт самовывоза")
 
         return cleaned_data
+

@@ -1,21 +1,22 @@
 # inventory/views.py
 
 from django.contrib import messages
-from django.contrib.auth.decorators import user_passes_test
-from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import user_passes_test, login_required
+from django.shortcuts import render, redirect, get_object_or_404
 
+from pos.models import Point
+from products.models import Product
 from users.decorators import permission_required
 from .forms import InventoryMoveForm
 from .forms import PointInventoryForm
 from django.db import transaction
-from .models import PointInventory, StockMovement
+from .models import PointInventory, StockMovement, StockHistory
 
 
 def is_manager(user):
     return user.is_superuser or user.is_staff or user.groups.filter(name='Модераторы').exists()
 
 
-# inventory/views.py
 @user_passes_test(is_manager)
 def move_inventory(request):
     form = InventoryMoveForm()
@@ -31,7 +32,6 @@ def move_inventory(request):
 
             try:
                 with transaction.atomic():
-                    # Получаем инвентарь из точки отправления
                     from_inv, created = PointInventory.objects.get_or_create(
                         product=product,
                         point=from_point,
@@ -42,14 +42,12 @@ def move_inventory(request):
                         messages.error(request, "Недостаточно товара на исходной точке")
                         return render(request, 'inventory/move_form.html', {'form': form})
 
-                    # Получаем или создаём инвентарь целевой точки
                     to_inv, created = PointInventory.objects.select_for_update().get_or_create(
                         product=product,
                         point=to_point,
                         defaults={'quantity': 0}
                     )
 
-                    # Обновляем остатки
                     from_inv.quantity -= quantity
                     from_inv.save()
 
@@ -63,6 +61,24 @@ def move_inventory(request):
                         from_point=from_point,
                         to_point=to_point,
                         quantity=quantity
+                    )
+
+                    # Сохраняем историю списания (если нужно)
+                    StockHistory.objects.create(
+                        product=product,
+                        point=from_point,
+                        quantity=quantity,
+                        action='writeoff',
+                        comment="Товар перемещён"
+                    )
+
+                    # Сохраняем историю добавления
+                    StockHistory.objects.create(
+                        product=product,
+                        point=to_point,
+                        quantity=quantity,
+                        action='add',
+                        comment="Товар перемещён"
                     )
 
                     messages.success(request, "Товар успешно перемещён")
@@ -80,8 +96,31 @@ def move_inventory(request):
 
 @permission_required
 def inventory_list_view(request):
-    inventories = PointInventory.objects.select_related('product', 'point').all()
-    return render(request, 'inventory/inventory_list.html', {'inventories': inventories})
+    """
+    Список остатков на всех точках (для админов и менеджеров)
+    """
+    # Получаем все товары и точки для фильтрации
+    products = Product.objects.all()
+    points = Point.objects.all()
+
+    # Получаем параметры фильтрации
+    product_id = request.GET.get('product')
+    point_id = request.GET.get('point')
+
+    # Фильтруем остатки
+    inventories = PointInventory.objects.all().order_by('-updated_at')
+
+    if product_id:
+        inventories = inventories.filter(product_id=product_id)
+
+    if point_id:
+        inventories = inventories.filter(point_id=point_id)
+
+    return render(request, 'inventory/inventory_list.html', {
+        'inventories': inventories,
+        'products': products,
+        'points': points
+    })
 
 
 def inventory_detail_view(request, inventory_id):
@@ -107,7 +146,7 @@ def add_inventory(request):
 
 def stock_movement_history(request):
     movements = StockMovement.objects.select_related('from_point', 'to_point').all().order_by('-timestamp')
-    return render(request, 'inventory/history.html', {'movements': movements})
+    return render(request, 'inventory/stock_history.html', {'movements': movements})
 
 
 def low_stock_alert(request):
@@ -116,13 +155,61 @@ def low_stock_alert(request):
     return render(request, 'inventory/low_stock.html', {'inventories': inventories})
 
 
+@login_required
 def stock_history(request):
-    movements = StockMovement.objects.select_related(
-        'product_inventory',
-        'from_point',
-        'to_point'
-    ).all().order_by('-timestamp')
+    """
+    История операций со складом
+    """
+    history = StockHistory.objects.all().order_by('-created_at')
 
-    return render(request, 'inventory/history.html', {
-        'movements': movements
+    action_filter = request.GET.get('action')
+
+    # Получаем все возможные действия из модели
+    ACTION_CHOICES = dict(StockHistory.ACTION_CHOICES)
+
+    # Фильтруем историю
+    if action_filter and action_filter in ACTION_CHOICES:
+        history = StockHistory.objects.filter(action=action_filter).order_by('-created_at')
+    else:
+        history = StockHistory.objects.all().order_by('-created_at')
+
+    return render(request, 'inventory/stock_history.html', {
+        'history': history,
+        'ACTION_CHOICES': ACTION_CHOICES
     })
+
+
+@login_required
+def writeoff_inventory(request, inventory_id):
+    """
+    Списание товара
+    """
+    try:
+        inv = get_object_or_404(PointInventory, id=inventory_id)
+
+        if request.method == 'POST':
+            quantity = int(request.POST.get('quantity'))
+            comment = request.POST.get('comment')
+
+            if quantity <= 0 or quantity > inv.quantity:
+                messages.error(request, "Неверное количество для списания")
+                return redirect('inventory:inventory_list')
+
+            # Обновляем остаток
+            inv.quantity -= quantity
+            inv.save()
+
+            # Сохраняем историю
+            StockHistory.objects.create(
+                product=inv.product,
+                point=inv.point,
+                quantity=quantity,
+                action='writeoff',
+                comment=comment
+            )
+
+            messages.success(request, f"Списано {quantity} единиц товара '{inv.product.name}' с точки '{inv.point.name}'.")
+            return redirect('inventory:inventory_list')
+    except Exception as e:
+        messages.error(request, f"Ошибка при списании товара: {e}")
+        return redirect('inventory:inventory_list')

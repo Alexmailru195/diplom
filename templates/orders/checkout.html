@@ -4,15 +4,6 @@
 <div class="container mt-5">
     <h3 class="mb-4">Подтвердите заказ</h3>
 
-    {% if messages %}
-    {% for message in messages %}
-    <div class="alert alert-dismissible fade show alert-{{ message.tags }}">
-        {{ message }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-    {% endfor %}
-    {% endif %}
-
     <form method="post" id="order-form" class="needs-validation" novalidate>
         {% csrf_token %}
 
@@ -40,7 +31,7 @@
         <div id="pickup-fields" style="display: none;">
             <div class="mb-3">
                 <label for="id_pickup_point" class="form-label">Пункт самовывоза:</label>
-                <select name="pickup_point" id="id_pickup_point" class="form-select">
+                <select name="pickup_point" id="id_pickup_point" class="form-select" required>
                     <option value="">-- Выберите пункт --</option>
                     {% for point in points %}
                     <option value="{{ point.id }}">{{ point.name }} — {{ point.address }}</option>
@@ -50,11 +41,10 @@
         </div>
 
         <!-- Адрес доставки -->
-        <div id="delivery-fields">
+        <div id="delivery-address-fields">
             <div class="mb-3">
                 <label for="id_address" class="form-label">Адрес доставки:</label>
-                <input type="text" name="address" id="id_address"
-                       class="form-control"
+                <input type="text" name="address" id="id_address" class="form-control"
                        placeholder="Улица, дом, квартира"
                        value="{{ form.address.value|default:'' }}"
                        required/>
@@ -62,14 +52,13 @@
         </div>
 
         <!-- Дата доставки -->
-        <div class="mb-3">
+        <div id="delivery-date-field" class="mb-3">
             <label for="id_delivery_date" class="form-label">Дата доставки:</label>
-            <input type="text" name="delivery_date" id="id_delivery_date" class="form-control"
-                   placeholder="гггг-мм-дд" required>
+            <input type="date" name="delivery_date" id="id_delivery_date" class="form-control" required />
         </div>
 
         <!-- Время доставки как временной слот -->
-        <div class="mb-3">
+        <div id="time-slot-field" class="mb-3">
             <label for="id_time_slot" class="form-label">Время доставки:</label>
             <select name="time_slot" id="id_time_slot" class="form-select" required>
                 <option value="">-- Выберите время --</option>
@@ -77,82 +66,85 @@
                 <option value="afternoon">День (13:00–17:00)</option>
             </select>
         </div>
-</div>
 
-<!-- Имя, телефон, email берём из аккаунта -->
-<div class="mb-3">
-    <label for="id_name" class="form-label">Имя:</label>
-    <input type="text" name="name" id="id_name" class="form-control" value="{{ user.first_name }}" required
-           readonly/>
-</div>
+        <!-- Имя, телефон, email берём из аккаунта -->
+        <div class="mb-3">
+            <label for="id_name" class="form-label">Имя:</label>
+            <input type="text" name="name" id="id_name" class="form-control" value="{{ user.first_name }}" required readonly/>
+        </div>
 
-<div class="mb-3">
-    <label for="id_phone" class="form-label">Телефон:</label>
-    <input type="text" name="phone" id="id_phone" class="form-control" value="{{ user.phone }}" required
-           readonly/>
-</div>
+        <div class="mb-3">
+            <label for="id_phone" class="form-label">Телефон:</label>
+            <input type="text" name="phone" id="id_phone" class="form-control" value="{{ user.phone }}" required readonly/>
+        </div>
 
-<div class="mb-3">
-    <label for="id_email" class="form-label">Email (необязательно):</label>
-    <input type="email" name="email" id="id_email" class="form-control" value="{{ user.email }}" readonly/>
-</div>
+        <div class="mb-3">
+            <label for="id_email" class="form-label">Email (необязательно):</label>
+            <input type="email" name="email" id="id_email" class="form-control" value="{{ user.email }}" readonly/>
+        </div>
 
-<!-- Способ оплаты -->
-<div class="mb-3">
-    <label for="id_payment_type" class="form-label">Способ оплаты:</label>
-    <select name="payment_type" id="id_payment_type" class="form-select" required>
-        <option value="">-- Выберите способ --</option>
-        {% for value, label in form.PAYMENT_CHOICES %}
-        <option value="{{ value }}" {% if form.initial.payment_type == value %}selected{% endif %}>
-            {{ label }}
-        </option>
-        {% endfor %}
-    </select>
-</div>
+        <!-- Способ оплаты -->
+        <div class="mb-3">
+            <label for="id_payment_type" class="form-label">Способ оплаты:</label>
+            <select name="payment_type" id="id_payment_type" class="form-select" required>
+                <option value="">-- Выберите способ --</option>
+                {% for value, label in form.PAYMENT_CHOICES %}
+                <option value="{{ value }}" {% if form.initial.payment_type == value %}selected{% endif %}>
+                    {{ label }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
 
-<!-- Корзина -->
-<hr>
-<ul class="list-group mb-4">
-    {% for item in cart_items %}
-    <li class="list-group-item d-flex justify-content-between align-items-center">
-        {{ item.product.name }} × {{ item.quantity }}
-        <span class="badge bg-primary rounded-pill">{{ item.total|floatformat:"-2"}} ₽</span>
-    </li>
-    {% endfor %}
-    <li class="list-group-item d-flex justify-content-between align-items-center fw-bold">
-        Итого:
-        <span class="badge bg-success rounded-pill">{{ total_price|floatformat:"-2"}} ₽</span>
-    </li>
-</ul>
+        <!-- Корзина -->
+        <hr>
+        <ul class="list-group mb-4">
+            {% for item in cart_items %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                {{ item.product.name }} × {{ item.quantity }}
+                <span class="badge bg-primary rounded-pill">{{ item.total|floatformat:"-2"}} ₽</span>
+            </li>
+            {% endfor %}
+            <li class="list-group-item d-flex justify-content-between align-items-center fw-bold">
+                Итого:
+                <span class="badge bg-success rounded-pill">{{ total_price|floatformat:"-2"}} ₽</span>
+            </li>
+        </ul>
 
-<!-- Кнопка подтверждения -->
-<div class="d-grid">
-    <button type="submit" class="btn btn-success w-100">Подтвердить заказ</button>
-</div>
-</form>
+        <!-- Кнопка подтверждения -->
+        <div class="d-grid">
+            <button type="submit" class="btn btn-success w-100">Подтвердить заказ</button>
+        </div>
+    </form>
 
-<!-- Переключение между самовывозом и доставкой -->
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const deliveryType = document.getElementById('id_delivery_type');
-        const pickupFields = document.getElementById('pickup-fields');
-        const deliveryFields = document.getElementById('delivery-fields');
+    <!-- Переключение между самовывозом и доставкой -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const deliveryType = document.getElementById('id_delivery_type');
+            const pickupFields = document.getElementById('pickup-fields');
+            const deliveryAddressFields = document.getElementById('delivery-address-fields');
+            const deliveryDateField = document.getElementById('delivery-date-field');
+            const timeSlotField = document.getElementById('time-slot-field');
 
-        function toggleFields() {
-            if (deliveryType.value === 'pickup') {
-                pickupFields.style.display = 'block';
-                deliveryFields.style.display = 'none';
-            } else {
-                pickupFields.style.display = 'none';
-                deliveryFields.style.display = 'block';
+            function toggleFields() {
+                if (deliveryType.value === 'pickup') {
+                    pickupFields.style.display = 'block';
+                    deliveryAddressFields.style.display = 'none';
+                    deliveryDateField.style.display = 'none';
+                    timeSlotField.style.display = 'none';
+                } else {
+                    pickupFields.style.display = 'none';
+                    deliveryAddressFields.style.display = 'block';
+                    deliveryDateField.style.display = 'block';
+                    timeSlotField.style.display = 'block';
+                }
             }
-        }
 
-        if (deliveryType) {
-            deliveryType.addEventListener('change', toggleFields);
-            toggleFields();  // Вызов при загрузке
-        }
-    });
-</script>
+            if (deliveryType) {
+                deliveryType.addEventListener('change', toggleFields);
+                toggleFields(); // Вызов при загрузке страницы
+            }
+        });
+    </script>
 </div>
 {% endblock %}

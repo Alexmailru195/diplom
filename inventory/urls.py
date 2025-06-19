@@ -2,7 +2,7 @@
 
 from django.urls import path
 from . import views
-from .views import inventory_list_view, stock_history
+from .views import inventory_list_view, stock_history, writeoff_inventory
 
 app_name = 'inventory'
 
@@ -13,4 +13,5 @@ urlpatterns = [
     path('move/', views.move_inventory, name='move_inventory'),
     path('low-stock/', views.low_stock_alert, name='low_stock_alert'),
     path('history/', stock_history, name='stock_history'),
+    path('writeoff/<int:inventory_id>/', writeoff_inventory, name='writeoff'),
 ]

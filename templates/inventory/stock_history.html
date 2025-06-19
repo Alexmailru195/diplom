@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}История операций со складом{% endblock %}
+{% block content %}
+<div class="container mt-5">
+    <h2>История операций</h2>
+
+    <!-- Форма фильтрации -->
+    <form method="get" class="mb-3 d-flex flex-wrap gap-2">
+        <label for="action_filter" class="visually-hidden">Фильтр по действию:</label>
+        <select name="action" id="action_filter" class="form-select w-auto">
+            <option value="">-- Все действия --</option>
+            {% for value, label in ACTION_CHOICES.items %}
+                <option value="{{ value }}" {% if request.GET.action == value|stringformat:"s" %}selected{% endif %}>
+                    {{ label }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <button type="submit" class="btn btn-outline-secondary">Применить фильтр</button>
+    </form>
+
+    {% if history %}
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Товар</th>
+                <th>Пункт выдачи</th>
+                <th>Количество</th>
+                <th>Действие</th>
+                <th>Комментарий</th>
+                <th>Дата</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in history %}
+            <tr>
+                <td>{{ item.product.name }}</td>
+                <td>{{ item.point.name }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>{{ item.get_action_display }}</td>
+                <td>{{ item.comment|default:"—" }}</td>
+                <td>{{ item.created_at|date:"d.m.Y H:i" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>Нет истории операций.</p>
+    {% endif %}
+</div>
+{% endblock %}

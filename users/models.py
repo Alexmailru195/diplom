@@ -1,10 +1,10 @@
 # users/models.py
-import re
 
 from django.contrib.auth.models import AbstractUser
-from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+
+from pos.models import Point
 
 
 class User(AbstractUser):
@@ -29,6 +29,7 @@ class User(AbstractUser):
     email = models.EmailField(unique=True)
     date_joined = models.DateTimeField(_('Дата регистрации'), auto_now_add=True)
     last_login = models.DateTimeField(_('Последний вход'), auto_now=True)
+    points = models.ManyToManyField(Point, related_name='managers', blank=True)
 
     def __str__(self):
         return self.username

@@ -34,13 +34,13 @@
     </ul>
 
     <!-- Форма изменения статуса -->
-    {% if request.user.is_superuser or request.user == order.manager %}
+    {% if request.user.is_superuser or request.user.is_staff or is_point_manager %}
         {% if not is_forbidden_status %}
             <form method="post" action="{% url 'orders:update_order_status' order.id %}">
                 {% csrf_token %}
                 <label for="status">Новый статус:</label>
                 <select name="status" id="status" class="form-select mb-3">
-                    {% for value, label in order.STATUS_CHOICES %}
+                    {% for value, label in STATUS_CHOICES %}
                         <option value="{{ value }}" {% if order.status == value %}selected{% endif %}>
                             {{ label }}
                         </option>

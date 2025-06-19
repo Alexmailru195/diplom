@@ -3,6 +3,7 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from pos.models import Point
+from products.models import Product
 
 
 class PointInventory(models.Model):
@@ -69,3 +70,21 @@ class StockMovement(models.Model):
 
     def __str__(self):
         return f"{self.quantity} шт. из {self.from_point} в {self.to_point}"
+
+
+class StockHistory(models.Model):
+    ACTION_CHOICES = (
+        ('add', 'Добавление'),
+        ('writeoff', 'Списание'),
+        ('move', 'Перемещение'),
+    )
+
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    point = models.ForeignKey(Point, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField()
+    action = models.CharField(max_length=10, choices=ACTION_CHOICES)
+    comment = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.action.capitalize()} {self.product.name} — {self.quantity} шт. ({self.point.name})"
