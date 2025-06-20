@@ -9,7 +9,7 @@ from products.models import Product
 
 
 def home_view(request):
-    products = Product.objects.all()[:4]  # ← просто последние товары
+    products = Product.objects.all()[:3]
     return render(request, 'home.html', {'popular_products': products})
 
 

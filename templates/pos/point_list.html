@@ -3,14 +3,40 @@
 {% block content %}
 <div class="container mt-5">
     <h2>Пункты выдачи</h2>
-    {% for point in points %}
-        <div class="card mb-3">
-            <div class="card-body">
-                <h5 class="card-title">{{ point.name }}</h5>
-                <p>{{ point.address }}</p>
-                <a href="{% url 'pos:point_detail' point.id %}" class="btn btn-primary">Детали</a>
+
+    {% if points %}
+        {% for point in points %}
+            <div class="card mb-3 shadow-sm border-0">
+                <div class="card-body p-4">
+                    <h5 class="card-title fw-bold">{{ point.name }}</h5>
+                    <p class="card-text"><strong>Адрес:</strong> {{ point.address }}</p>
+
+                    <!-- Информация о заказах -->
+                    <p class="card-text text-muted small">
+                        {{ point.total_orders }} заказов на сумму {{ point.total_amount|floatformat:"-2"}} ₽
+                    </p>
+
+                    <!-- Статус точки (если нужно) -->
+                    {% if point.is_active %}
+                        <span class="badge bg-success">Активен</span>
+                    {% else %}
+                        <span class="badge bg-danger">Неактивен</span>
+                    {% endif %}
+
+                    <!-- Кнопки -->
+                    <div class="mt-3 d-flex gap-2">
+                        <a href="{% url 'pos:point_detail' point.id %}" class="btn btn-primary">Детали</a>
+
+                        <!-- Кнопка управления (для админов и менеджеров) -->
+                        {% if request.user.is_superuser or request.user.is_staff %}
+                            <a href="{% url 'pos:edit_point' point.id %}" class="btn btn-outline-secondary">Редактировать</a>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
-        </div>
-    {% endfor %}
+        {% endfor %}
+    {% else %}
+        <p class="text-center text-muted mt-5">Нет зарегистрированных пунктов выдачи.</p>
+    {% endif %}
 </div>
 {% endblock %}

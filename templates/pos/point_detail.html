@@ -1,16 +1,67 @@
 {% extends "base.html" %}
+{% load static %}
+
 {% block title %}{{ point.name }}{% endblock %}
+
 {% block content %}
 <div class="container mt-5">
-    <h2>Пункт "{{ point.name }}"</h2>
-    <p><strong>Адрес:</strong> {{point.address}}</p>
-    <p><strong>Количество товаров:</strong> {{inventories.count}}</p>
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- Карточка пункта выдачи -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body p-4">
+                    <h2 class="card-title fw-bold mb-3">{{ point.name }}</h2>
+                    <p class="card-text"><strong>Адрес:</strong> {{ point.address }}</p>
 
-    <h4>Остатки</h4>
-    <ul>
-        {% for inv in inventories %}
-        <li>{{ inv.product.name }} — {{ inv.quantity }} шт.</li>
-        {% endfor %}
-    </ul>
+                    <!-- Статус точки -->
+                    {% if point.is_active %}
+                        <span class="badge bg-success">Активен</span>
+                    {% else %}
+                        <span class="badge bg-danger">Неактивен</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Остатки товаров -->
+            <div class="mt-4">
+                <h4>Остатки товаров</h4>
+                {% if inventories %}
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Товар</th>
+                                <th>Количество</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for inv in inventories %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <!-- Маленькая картинка товара -->
+                                            {% if inv.product.images.all.0 %}
+                                                <img src="{{ inv.product.images.all.0.image.url }}" class="rounded me-3" width="60" height="60" alt="{{ inv.product.name }}">
+                                            {% else %}
+                                                <img src="{% static 'images/no-image.png' %}" class="rounded me-3" width="60" height="60" alt="Нет изображения">
+                                            {% endif %}
+                                            <span>{{ inv.product.name }}</span>
+                                        </div>
+                                    </td>
+                                    <td>{{ inv.quantity }} шт.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p class="text-muted">На данном пункте выдачи пока нет товаров.</p>
+                {% endif %}
+            </div>
+
+            <!-- Кнопка "Назад" -->
+            <div class="mt-4">
+                <a href="{% url 'pos:point_list' %}" class="btn btn-outline-dark">Назад к списку</a>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
