@@ -68,6 +68,9 @@ def register_view(request):
         if form.is_valid():
             user = form.save()
 
+            # Объединяем гостевую и пользовательскую корзину
+            merge_guest_cart(request)
+
             # Отправляем письмо о регистрации
             subject = "Регистрация успешна"
             html_message = render_to_string('users/email_registered.html', {
@@ -111,6 +114,7 @@ def login_view(request):
             login(request, user)
 
             # Объединяем гостевую и пользовательскую корзину
+            from cart.views import merge_guest_cart
             merge_guest_cart(request)
 
             messages.success(request, f"Добро пожаловать, {user.username}!")

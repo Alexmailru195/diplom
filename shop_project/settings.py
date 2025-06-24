@@ -39,12 +39,13 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     # Third-party apps
-    'rest_framework',  # для REST API
+    'rest_framework',
 
     # Local apps
     'products',
     'cart',
     'orders',
+    'delivery',
     'inventory',
     'pos',
     'notifications',
@@ -156,3 +157,5 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'mailru195@yandex.ru'
 EMAIL_HOST_PASSWORD = 'lbmbywboxucntimh'
 DEFAULT_FROM_EMAIL = 'mailru195@yandex.ru'
+
+CONTACT_RECEIVER = 'mailru195@yandex.ru'

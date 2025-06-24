@@ -11,7 +11,10 @@
                     <div class="carousel-inner">
                         {% for image in images %}
                             <div class="carousel-item {% if forloop.first %}active{% endif %}">
-                                <img src="{{ image.image.url }}" class="d-block w-100" alt="{{ product.name }}">
+                                <img src="{{ image.image.url }}"
+                                     class="d-block w-100"
+                                     alt="{{ product.name }}"
+                                     style="max-height: 400px; object-fit: contain;">  <!-- ← Изменено -->
                             </div>
                         {% endfor %}
                     </div>
@@ -23,7 +26,10 @@
                     </button>
                 </div>
             {% else %}
-                <img src="{% static 'images/no-image.png' %}" class="img-fluid mb-3" alt="Нет изображения">
+                <img src="{% static 'images/no-image.png' %}"
+                     class="img-fluid mb-3"
+                     alt="Нет изображения"
+                     style="max-height: 400px; object-fit: contain;">
             {% endif %}
         </div>
 

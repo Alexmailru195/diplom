@@ -98,15 +98,25 @@
 
 <!-- Футер -->
 <footer class="footer mt-auto py-3 bg-light border-top">
-    <div class="container text-center">
-        <small class="text-muted">
+    <div class="container text-center py-4">
+        <!-- Информация о магазине -->
+        <small class="text-muted d-block mb-2">
             &copy; {{ now|date:"Y" }} Интернет-магазин. Все права защищены.
         </small>
-        <br>
-        <small class="text-muted">
+        <small class="text-muted d-block mb-4">
             Адрес: г. Москва, улица Тестовая, д. 1<br>
             Email: info@store.com | Телефон: +7 (999) 123-45-67
         </small>
+
+        <!-- Кнопка обратной связи -->
+        <button
+            type="button"
+            class="btn btn-outline-primary rounded-pill px-4 py-2"
+            data-bs-toggle="modal"
+            data-bs-target="#contactModal"
+        >
+            Обратная связь
+        </button>
     </div>
 </footer>
 
@@ -116,4 +126,33 @@
 <!-- Дополнительный JS -->
 {% block extra_js %}{% endblock %}
 </body>
+<!-- Modal (popup окно) -->
+<div class="modal fade" id="contactModal" tabindex="-1" aria-labelledby="contactModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="contactModalLabel">Обратная связь</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form action="{% url 'notifications:send_message' %}" method="post">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label for="id_name" class="form-label">Ваше имя</label>
+            <input type="text" name="name" class="form-control" id="id_name" required>
+          </div>
+          <div class="mb-3">
+            <label for="id_email" class="form-label">Email</label>
+            <input type="email" name="email" class="form-control" id="id_email" required>
+          </div>
+          <div class="mb-3">
+            <label for="id_message" class="form-label">Сообщение</label>
+            <textarea name="message" class="form-control" id="id_message" rows="3" required></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Отправить</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
 </html>

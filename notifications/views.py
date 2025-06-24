@@ -1,5 +1,10 @@
 # notifications/views.py
-
+from django.conf import settings
+from django.contrib import messages
+from django.core.mail import send_mail
+from django.shortcuts import redirect
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 from rest_framework.viewsets import ViewSet
 from rest_framework.response import Response
 from rest_framework import status
@@ -82,3 +87,38 @@ class NotificationViewSet(ViewSet):
         return Response({
             "detail": f"{updated} уведомлений отмечено как непрочитанные"
         })
+
+
+def send_message(request):
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        email = request.POST.get('email')
+        message_text = request.POST.get('message')
+
+        if not all([name, email, message_text]):
+            messages.error(request, "Пожалуйста, заполните все поля.")
+            return redirect('home')
+
+        html_message = render_to_string('notifications/email_template.html', {
+            'name': name,
+            'email': email,
+            'message': message_text
+        })
+        plain_message = strip_tags(html_message)
+
+        try:
+            send_mail(
+                subject=f"Новое сообщение от {name}",
+                message=plain_message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[settings.CONTACT_RECEIVER],
+                html_message=html_message,
+                fail_silently=False
+            )
+            messages.success(request, "Ваше сообщение было отправлено!")
+        except Exception as e:
+            messages.error(request, f"Ошибка при отправке сообщения: {e}")
+
+        return redirect('home')
+
+    return redirect('home')

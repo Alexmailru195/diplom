@@ -9,6 +9,8 @@
 
     {% if order.pickup_point %}
     <p><strong>Пункт самовывоза:</strong> {{ order.pickup_point.name }} — {{ order.pickup_point.address }}</p>
+    <p><strong>Адрес:</strong> {{ order.pickup_point.address }}</p>
+    <p><strong>График работы:</strong> {{ order.pickup_point.work_schedule }}</p>
     {% else %}
     <p><strong>Адрес доставки:</strong> {{ order.address }}</p>
     {% endif %}

@@ -13,6 +13,7 @@ from django.utils.dateparse import parse_date
 from django.utils.html import strip_tags
 
 from cart.models import CartItem
+from delivery.models import DeliveryZone
 from inventory.models import PointInventory, StockHistory
 from orders.utils import send_order_status_email
 from pos.models import Point
@@ -549,3 +550,13 @@ def payment_process(request, order_id):
         messages.success(request, "Оплата прошла успешно! Ваш заказ принят к выполнению.")
 
     return redirect('orders:order_detail', order_id=order.id)
+
+
+def calculate_delivery_cost(order):
+    if order.delivery_type != 'courier':
+        return 0
+
+    zone = DeliveryZone.objects.first()
+    distance = 5  # Примерное расстояние до адреса
+    cost = zone.base_price + (zone.price_per_km * distance)
+    return round(cost, 2)

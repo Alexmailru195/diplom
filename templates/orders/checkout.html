@@ -54,7 +54,7 @@
         <!-- Дата доставки -->
         <div id="delivery-date-field" class="mb-3">
             <label for="id_delivery_date" class="form-label">Дата доставки:</label>
-            <input type="date" name="delivery_date" id="id_delivery_date" class="form-control" required />
+            <input type="date" name="delivery_date" id="id_delivery_date" class="form-control" required/>
         </div>
 
         <!-- Время доставки как временной слот -->
@@ -70,12 +70,14 @@
         <!-- Имя, телефон, email берём из аккаунта -->
         <div class="mb-3">
             <label for="id_name" class="form-label">Имя:</label>
-            <input type="text" name="name" id="id_name" class="form-control" value="{{ user.first_name }}" required readonly/>
+            <input type="text" name="name" id="id_name" class="form-control" value="{{ user.first_name }}" required
+                   readonly/>
         </div>
 
         <div class="mb-3">
             <label for="id_phone" class="form-label">Телефон:</label>
-            <input type="text" name="phone" id="id_phone" class="form-control" value="{{ user.phone }}" required readonly/>
+            <input type="text" name="phone" id="id_phone" class="form-control" value="{{ user.phone }}" required
+                   readonly/>
         </div>
 
         <div class="mb-3">
@@ -116,35 +118,55 @@
             <button type="submit" class="btn btn-success w-100">Подтвердить заказ</button>
         </div>
     </form>
+</div>
 
-    <!-- Переключение между самовывозом и доставкой -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const deliveryType = document.getElementById('id_delivery_type');
-            const pickupFields = document.getElementById('pickup-fields');
-            const deliveryAddressFields = document.getElementById('delivery-address-fields');
-            const deliveryDateField = document.getElementById('delivery-date-field');
-            const timeSlotField = document.getElementById('time-slot-field');
-
-            function toggleFields() {
-                if (deliveryType.value === 'pickup') {
-                    pickupFields.style.display = 'block';
-                    deliveryAddressFields.style.display = 'none';
-                    deliveryDateField.style.display = 'none';
-                    timeSlotField.style.display = 'none';
-                } else {
-                    pickupFields.style.display = 'none';
-                    deliveryAddressFields.style.display = 'block';
-                    deliveryDateField.style.display = 'block';
-                    timeSlotField.style.display = 'block';
-                }
-            }
-
-            if (deliveryType) {
-                deliveryType.addEventListener('change', toggleFields);
-                toggleFields(); // Вызов при загрузке страницы
-            }
+<script src="https://api-maps.yandex.ru/2.1/?apikey=ВАШ_API_KEY&lang=ru_RU"></script>
+<script>
+    ymaps.ready(function () {
+        var map = new ymaps.Map("map", {
+            center: [55.7558, 37.6176],
+            zoom: 10
         });
-    </script>
+
+        // Добавляем маркеры
+        {% for pickup_point in points %}
+        map.geoObjects.add(
+            new ymaps.Placemark([{{ pickup_point.latitude }}, {{ pickup_point.longitude }}], {
+                balloonContent: "{{ pickup_point.name }}"
+            })
+        );
+        {% endfor %}
+    });
+</script>
+
+<!-- Переключение между самовывозом и доставкой -->
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const deliveryType = document.getElementById('id_delivery_type');
+        const pickupFields = document.getElementById('pickup-fields');
+        const deliveryAddressFields = document.getElementById('delivery-address-fields');
+        const deliveryDateField = document.getElementById('delivery-date-field');
+        const timeSlotField = document.getElementById('time-slot-field');
+
+        function toggleFields() {
+            if (deliveryType.value === 'pickup') {
+                pickupFields.style.display = 'block';
+                deliveryAddressFields.style.display = 'none';
+                deliveryDateField.style.display = 'none';
+                timeSlotField.style.display = 'none';
+            } else {
+                pickupFields.style.display = 'none';
+                deliveryAddressFields.style.display = 'block';
+                deliveryDateField.style.display = 'block';
+                timeSlotField.style.display = 'block';
+            }
+        }
+
+        if (deliveryType) {
+            deliveryType.addEventListener('change', toggleFields);
+            toggleFields(); // Вызов при загрузке страницы
+        }
+    });
+</script>
 </div>
 {% endblock %}

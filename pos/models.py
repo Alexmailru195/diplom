@@ -8,6 +8,8 @@ from django import forms
 class Point(models.Model):
     name = models.CharField("Название точки", max_length=100)
     address = models.TextField("Адрес")
+    work_schedule = models.CharField(max_length=500, default="")
+    latitude = models.FloatField(null=True, blank=True)
     phone = models.CharField("Телефон", max_length=20, blank=True, null=True)
     is_active = models.BooleanField("Активна", default=True)
     is_warehouse = models.BooleanField("Это склад", default=False)

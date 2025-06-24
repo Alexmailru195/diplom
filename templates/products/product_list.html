@@ -21,18 +21,20 @@
             <ul class="list-group">
                 <li class="list-group-item {% if not selected_category and not query %}active{% endif %}">
                     <a href="{% url 'products:product_list' %}"
-                       class="text-decoration-none d-flex justify-content-between align-items-center">
-                        Все товары
-                        {% if products.paginator.count > 0 %}
-                            ({{ products.paginator.count }})
-                        {% endif %}
+                    class="text-decoration-none d-flex justify-content-between align-items-center"
+                    style="color: #000;">
+                    Все товары
+                    {% if products.paginator.count > 0 %}
+                        ({{ products.paginator.count }})
+                    {% endif %}
                     </a>
                 </li>
 
                 {% for category in categories %}
                     <li class="list-group-item {% if selected_category.id == category.id %}active{% endif %}">
                         <a href="{% url 'products:product_list' %}?category={{ category.id }}"
-                           class="text-decoration-none d-flex justify-content-between align-items-center">
+                           class="text-decoration-none d-flex justify-content-between align-items-center"
+                           style="color: #000;"> <!-- ← Цвет текста -->
                             {{ category.get_full_name }}
                             {% with category.get_product_count as count %}
                                 {% if count > 0 %}

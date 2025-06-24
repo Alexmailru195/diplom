@@ -186,13 +186,14 @@ def get_cart_items(request):
 
 @login_required
 def merge_guest_cart(request):
-    from products.models import Product
-    from cart.models import CartItem, GuestCart
+    from .models import Cart
 
-    # Получаем текущую сессию
-    session_key = request.session.session_key
+    # Получаем ключ текущей сессии
+    session_key = request.session.session_key or ''
+    if not session_key:
+        return redirect('cart:cart_view')
 
-    # Получаем корзину пользователя
+    # Получаем или создаём корзину пользователя
     try:
         cart = request.user.cart
     except Cart.DoesNotExist:
@@ -204,14 +205,20 @@ def merge_guest_cart(request):
         product = item.product
         quantity = item.quantity
 
+        # Получаем или создаём позицию в пользовательской корзине
         cart_item, created = CartItem.objects.get_or_create(
             cart=cart,
             product=product,
             defaults={'quantity': quantity}
         )
+
         if not created:
             cart_item.quantity += quantity
+            cart_item.save()
+        else:
             cart_item.save()
 
     # Очищаем гостевую корзину
     guest_items.delete()
+
+    return redirect('cart:cart_view')

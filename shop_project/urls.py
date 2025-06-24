@@ -22,7 +22,7 @@ urlpatterns = [
     path('orders/', include(('orders.urls', 'orders'), namespace='orders')),
     path('users/', include('users.urls')),
     path('logout/', views.logout_view, name='logout'),
-    path('notifications/', include('notifications.urls')),
+    path('notifications/', include(('notifications.urls', 'notifications'), namespace='notifications')),
     path('pos/', include(('pos.urls', 'pos'), namespace='pos')),
     path('inventory/', include(('inventory.urls', 'inventory'), namespace='inventory')),
 ]
