@@ -14,21 +14,31 @@
 
 {% block content %}
 <div class="container mt-5">
-    <div class="row">
+    <div class="row justify-content-center">
         <!-- Категории -->
-        <div class="col-md-3">
+        <div class="col-md-3 mb-4">
             <h4>Категории</h4>
-            <ul class="list-group mb-4">
-                <li class="list-group-item">
-                    <a href="{% url 'products:product_list' %}">Все товары</a>
+            <ul class="list-group">
+                <li class="list-group-item {% if not selected_category and not query %}active{% endif %}">
+                    <a href="{% url 'products:product_list' %}"
+                       class="text-decoration-none d-flex justify-content-between align-items-center">
+                        Все товары
+                        {% if products.paginator.count > 0 %}
+                            ({{ products.paginator.count }})
+                        {% endif %}
+                    </a>
                 </li>
+
                 {% for category in categories %}
-                    <li class="list-group-item">
-                        <a href="{% url 'products:product_list' %}?category={{ category.id }}">
-                            {{ category.name }}
-                            {% if category.products.count %}
-                                ({{ category.products.count }})
-                            {% endif %}
+                    <li class="list-group-item {% if selected_category.id == category.id %}active{% endif %}">
+                        <a href="{% url 'products:product_list' %}?category={{ category.id }}"
+                           class="text-decoration-none d-flex justify-content-between align-items-center">
+                            {{ category.get_full_name }}
+                            {% with category.get_product_count as count %}
+                                {% if count > 0 %}
+                                    ({{ count }})
+                                {% endif %}
+                            {% endwith %}
                         </a>
                     </li>
                 {% endfor %}
@@ -37,30 +47,64 @@
 
         <!-- Товары -->
         <div class="col-md-9">
-            <h2>{% if selected_category %}Товары в категории: {{ selected_category.name }}{% else %}Товары{% endif %}</h2>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <!-- Сортировка -->
+                <form method="get" class="d-flex mb-3">
+                    <input type="hidden" name="category" value="{{ selected_category.id|default:'' }}">
+                    <select name="sort" class="form-select w-auto me-2" onchange="this.form.submit()">
+                        <option value="default" {% if sort_by == 'default' %}selected{% endif %}>По умолчанию</option>
+                        <option value="price_asc" {% if sort_by == 'price_asc' %}selected{% endif %}>По возрастанию цены</option>
+                        <option value="price_desc" {% if sort_by == 'price_desc' %}selected{% endif %}>По убыванию цены</option>
+                        <option value="name_asc" {% if sort_by == 'name_asc' %}selected{% endif %}>По алфавиту A–Я</option>
+                        <option value="name_desc" {% if sort_by == 'name_desc' %}selected{% endif %}>По алфавиту Я–A</option>
+                    </select>
+                </form>
+            </div>
+
+            <h2 class="mb-4 text-center">{% if selected_category %}
+                Товары в категории: {{ selected_category.get_full_name }}
+                {% else %}
+                Каталог товаров
+                {% endif %}
+            </h2>
 
             {% if query %}
-                <p class="text-muted">Результаты поиска по запросу: <strong>"{{ query }}"</strong></p>
+                <p class="text-muted text-center">Результаты поиска по запросу: <strong>"{{ query }}"</strong></p>
             {% endif %}
 
             {% if products %}
-                <div class="row">
+                <div class="row g-4 justify-content-center">
                     {% for product in products %}
-                        <div class="col-md-4 mb-4">
-                            <div class="card h-100 shadow-sm">
-                                {% if product.images.all %}
-                                    <img src="{{ product.images.all.0.image.url }}" class="card-img-top" alt="{{ product.name }}">
-                                {% else %}
-                                    <img src="{% static 'images/no-image.png' %}" class="card-img-top" alt="Нет изображения">
-                                {% endif %}
+                        <div class="col-md-4 col-lg-3">
+                            <div class="card h-100 shadow-sm border-0">
+                                <!-- Изображение -->
+                                <div class="position-relative overflow-hidden" style="height: 200px;">
+                                    {% if product.images.all.0 %}
+                                        <img src="{{ product.images.all.0.image.url }}"
+                                             class="card-img-top img-fluid"
+                                             alt="{{ product.name }}"
+                                             style="width: 100%; height: 100%; object-fit: contain; display: block; margin: auto;">
+                                    {% else %}
+                                        <img src="{% static 'images/no-image.png' %}"
+                                             class="card-img-top img-fluid"
+                                             alt="Нет изображения"
+                                             style="width: 100%; height: 100%; object-fit: contain; display: block; margin: auto;">
+                                    {% endif %}
+                                </div>
+
+                                <!-- Название, цена, характеристики -->
                                 <div class="card-body d-flex flex-column">
-                                    <h5 class="card-title">
-                                        <a href="{% url 'products:product_detail' product.id %}" class="text-decoration-none">
-                                            {{ product.name }}
-                                        </a>
+                                    <h5 class="card-title text-truncate">
+                                        <a href="{% url 'products:product_detail' product.id %}" class="text-decoration-none">{{ product.name }}</a>
                                     </h5>
                                     <p class="card-text"><strong>Цена:</strong> {{ product.price }} ₽</p>
-                                    <p class="card-text">{{ product.description|truncatewords:20 }}</p>
+                                    <p class="card-text small">
+                                        {% for attr in product.attributes.all %}
+                                            {{ attr.attribute_type|title }}: {{ attr.value|title }}<br>
+                                        {% endfor %}
+                                    </p>
+
+                                    <!-- Форма добавления в корзину -->
                                     <form action="{% url 'cart:add_to_cart' product.id %}" method="post">
                                         {% csrf_token %}
                                         <input type="number" name="quantity" value="1" min="1" required class="form-control mb-2">
@@ -73,11 +117,12 @@
                 </div>
 
                 <!-- Пагинация -->
-                <nav aria-label="Pagination">
-                    <ul class="pagination justify-content-center mt-4">
+                <nav aria-label="Pagination" class="mt-4">
+                    <ul class="pagination justify-content-center">
                         {% if products.has_previous %}
                             <li class="page-item">
-                                <a class="page-link" href="?q={{ query }}&category={{ category_id }}&page={{ products.previous_page_number }}">← Предыдущая</a>
+                                <a class="page-link"
+                                   href="?q={{ query }}&category={{ selected_category.id|default:'' }}&sort={{ sort_by }}&page={{ products.previous_page_number }}">← Предыдущая</a>
                             </li>
                         {% else %}
                             <li class="page-item disabled">
@@ -92,14 +137,16 @@
                                 </li>
                             {% else %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?q={{ query }}&category={{ category_id }}&page={{ num }}">{{ num }}</a>
+                                    <a class="page-link"
+                                       href="?q={{ query }}&category={{ selected_category.id|default:'' }}&sort={{ sort_by }}&page={{ num }}">{{ num }}</a>
                                 </li>
                             {% endif %}
                         {% endfor %}
 
                         {% if products.has_next %}
                             <li class="page-item">
-                                <a class="page-link" href="?q={{ query }}&category={{ category_id }}&page={{ products.next_page_number }}">Следующая →</a>
+                                <a class="page-link"
+                                   href="?q={{ query }}&category={{ selected_category.id|default:'' }}&sort={{ sort_by }}&page={{ products.next_page_number }}">Следующая →</a>
                             </li>
                         {% else %}
                             <li class="page-item disabled">
@@ -108,14 +155,13 @@
                         {% endif %}
                     </ul>
                 </nav>
-
             {% else %}
                 {% if query %}
-                    <p>По вашему запросу ничего не найдено.</p>
+                    <p class="text-center text-muted mt-5">По вашему запросу ничего не найдено.</p>
                 {% elif selected_category %}
-                    <p>В этой категории пока нет товаров.</p>
+                    <p class="text-center text-muted mt-5">В этой категории пока нет товаров.</p>
                 {% else %}
-                    <p>Сначала выберите категорию слева.</p>
+                    <p class="text-center text-muted mt-5">Сначала выберите категорию слева.</p>
                 {% endif %}
             {% endif %}
         </div>

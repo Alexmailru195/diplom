@@ -137,12 +137,35 @@ def add_inventory(request):
     if request.method == 'POST':
         form = PointInventoryForm(request.POST)
         if form.is_valid():
-            form.save()
-            return redirect('inventory:inventory_list')
+            product = form.cleaned_data['product']
+            point = form.cleaned_data['point']
+            quantity = form.cleaned_data['quantity']
+
+            with transaction.atomic():
+                pinv, created = PointInventory.objects.select_for_update().get_or_create(
+                    product=product,
+                    point=point,
+                    defaults={'quantity': 0}
+                )
+
+                if not created:
+                    pinv.quantity += quantity
+                else:
+                    pinv.quantity = quantity
+
+                pinv.save()
+
+            messages.success(request, f"{'Создана' if created else 'Обновлена'} запись для '{product.name}' на '{point.name}'. Новое количество: {pinv.quantity}")
+            return redirect('inventory:stock_list')
+        else:
+            messages.error(request, "Форма заполнена неверно.")
+            print(form.errors)
+
     else:
         form = PointInventoryForm()
 
     return render(request, 'inventory/add_inventory.html', {'form': form})
+
 
 def stock_movement_history(request):
     movements = StockMovement.objects.select_related('from_point', 'to_point').all().order_by('-timestamp')
@@ -150,7 +173,7 @@ def stock_movement_history(request):
 
 
 def low_stock_alert(request):
-    threshold = 5  # или получать из GET параметра
+    threshold = 5
     inventories = PointInventory.objects.filter(quantity__lt=threshold)
     return render(request, 'inventory/low_stock.html', {'inventories': inventories})
 

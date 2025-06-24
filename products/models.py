@@ -15,7 +15,23 @@ class Category(models.Model):
     )
 
     def __str__(self):
+        return self.get_full_name()
+
+    def get_full_name(self):
+        if self.parent:
+            return f"{self.parent.get_full_name()} > {self.name}"
         return self.name
+
+    def get_all_products(self):
+        from .models import Product
+
+        products = Product.objects.filter(category=self)
+
+        return products.distinct()
+
+    def get_product_count(self):
+        """Получить количество товаров в текущей категории и её подкатегориях"""
+        return self.get_all_products().count()
 
     class Meta:
         verbose_name = "Категория"

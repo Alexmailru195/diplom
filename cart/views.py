@@ -1,6 +1,8 @@
 # cart/views.py
-
+from django.http import JsonResponse
 from django.shortcuts import render
+from django.views.decorators.csrf import csrf_exempt
+
 from .models import Cart, CartItem, GuestCart
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
@@ -9,7 +11,7 @@ from products.models import Product
 
 def cart_view(request):
     if not request.user.is_authenticated:
-        return render(request, 'cart/guest_cart.html')  # или редирект на вход
+        return render(request, 'cart/guest_cart.html')
 
     try:
         cart = Cart.objects.get(user=request.user)
@@ -128,3 +130,88 @@ def update_cart(request):
         return redirect('cart:cart_view')
 
     return redirect('cart:cart_view')
+
+
+@csrf_exempt
+def update_cart_ajax(request):
+    if request.method == 'POST':
+        product_id = request.POST.get('product_id')
+        quantity = int(request.POST.get('quantity'))
+        cart_item_id = request.POST.get('cart_item_id')
+
+        try:
+            item = CartItem.objects.get(id=cart_item_id)
+        except CartItem.DoesNotExist:
+            return JsonResponse({'error': 'Позиция не найдена'}, status=400)
+
+        # Дополнительные проверки можно добавить здесь
+        item.quantity = quantity
+        item.save()
+
+        return JsonResponse({
+            'total_price': item.cart.total_price,
+            'total_line_price': item.total,
+            'message': 'Количество обновлено'
+        })
+
+
+@csrf_exempt
+def remove_from_cart_ajax(request, product_id=None):
+    if request.method == 'POST':
+        # Получаем product_id из POST данных, если он не передан через URL
+        product_id = product_id or request.POST.get('product_id')
+
+        try:
+            item = CartItem.objects.get(product__id=product_id)
+            item.delete()
+        except CartItem.DoesNotExist:
+            return JsonResponse({'error': 'Позиция не найдена'}, status=400)
+
+        return JsonResponse({
+            'total_price': item.cart.total_price,
+            'message': 'Товар успешно удалён'
+        })
+
+
+def get_cart_items(request):
+    if request.user.is_authenticated:
+        return CartItem.objects.filter(cart__user=request.user).select_related('product')
+    else:
+        session_key = request.session.session_key or ''
+        if not session_key:
+            request.session.create()
+            session_key = request.session.session_key
+        return GuestCart.objects.filter(session_key=session_key).select_related('product')
+
+
+@login_required
+def merge_guest_cart(request):
+    from products.models import Product
+    from cart.models import CartItem, GuestCart
+
+    # Получаем текущую сессию
+    session_key = request.session.session_key
+
+    # Получаем корзину пользователя
+    try:
+        cart = request.user.cart
+    except Cart.DoesNotExist:
+        cart = Cart.objects.create(user=request.user)
+
+    # Переносим товары из гостевой корзины
+    guest_items = GuestCart.objects.filter(session_key=session_key)
+    for item in guest_items:
+        product = item.product
+        quantity = item.quantity
+
+        cart_item, created = CartItem.objects.get_or_create(
+            cart=cart,
+            product=product,
+            defaults={'quantity': quantity}
+        )
+        if not created:
+            cart_item.quantity += quantity
+            cart_item.save()
+
+    # Очищаем гостевую корзину
+    guest_items.delete()

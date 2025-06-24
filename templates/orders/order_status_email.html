@@ -14,9 +14,6 @@
         <li class="list-group-item"><strong>Итого:</strong> {{ order.total_price|floatformat:"-2"}} ₽</li>
     </ul>
 
-    <p>Вы можете посмотреть детали заказа, перейдя по ссылке:</p>
-    <a href="{{ site_url }}{{ order.get_absolute_url }}" class="btn btn-primary">Посмотреть заказ</a>
-
     <p>Если это были не вы — обратитесь к администратору.</p>
 </body>
 </html>

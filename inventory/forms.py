@@ -1,10 +1,10 @@
 # inventory/forms.py
 
 from django import forms
-from .models import StockMovement
-from .models import PointInventory
-from products.models import Product
+
 from pos.models import Point
+from products.models import Product
+from .models import PointInventory
 
 
 class InventoryMoveForm(forms.Form):
@@ -22,12 +22,7 @@ class InventoryMoveForm(forms.Form):
         }
 
 
-class PointInventoryForm(forms.ModelForm):
-    class Meta:
-        model = PointInventory
-        fields = ['point', 'product', 'quantity']
-        widgets = {
-            'point': forms.Select(attrs={'class': 'form-control'}),
-            'product': forms.Select(attrs={'class': 'form-control'}),
-            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'})
-        }
+class PointInventoryForm(forms.Form):
+    product = forms.ModelChoiceField(queryset=Product.objects.all(), label="Товар")
+    point = forms.ModelChoiceField(queryset=Point.objects.all(), label="Пункт выдачи")
+    quantity = forms.IntegerField(label="Количество", min_value=0)

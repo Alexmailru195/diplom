@@ -17,6 +17,11 @@ class Cart(models.Model):
     def __str__(self):
         return f"Корзина {self.user.username}"
 
+    @property
+    def total_price(self):
+        """Рассчитывает общую сумму товаров в корзине"""
+        return sum(item.total for item in self.items.all())
+
     class Meta:
         verbose_name = "Корзина"
         verbose_name_plural = "Корзины"
@@ -39,6 +44,7 @@ class CartItem(models.Model):
 
     @property
     def total(self):
+        """Рассчитывает сумму по одному товару"""
         return self.product.price * self.quantity
 
     def __str__(self):
@@ -50,14 +56,12 @@ class CartItem(models.Model):
 
 
 class GuestCart(models.Model):
-    session_key = models.CharField(max_length=40, db_index=True)
+    session_key = models.CharField(max_length=40)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=1)
-    added_at = models.DateTimeField(auto_now_add=True)
-
-    @property
-    def total_price(self):
-        return self.product.price * self.quantity
 
     def __str__(self):
-        return f"Гостевая корзина - {self.session_key}"
+        return f"Гостевая позиция {self.product.name} x {self.quantity}"
+
+    class Meta:
+        unique_together = ('session_key', 'product')

@@ -14,4 +14,5 @@ urlpatterns = [
     path('low-stock/', views.low_stock_alert, name='low_stock_alert'),
     path('history/', stock_history, name='stock_history'),
     path('writeoff/<int:inventory_id>/', writeoff_inventory, name='writeoff'),
+    path('', inventory_list_view, name='stock_list'),
 ]

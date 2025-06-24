@@ -1,19 +1,21 @@
 # users/views.py
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login, logout, update_session_auth_hash, get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import SetPasswordForm
 from django.contrib.auth.tokens import default_token_generator
-from django.contrib.auth.views import PasswordResetConfirmView
+from django.contrib.auth.views import PasswordResetConfirmView, LoginView
 from django.core.mail import send_mail
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import render_to_string
 from django.urls import reverse, reverse_lazy
 from django.utils.encoding import force_bytes
 from django.utils.html import strip_tags
 from django.utils.http import urlsafe_base64_encode
 
+from cart.views import merge_guest_cart
 from .forms import RegisterForm, LoginForm, ChangePasswordForm, ProfileUpdateForm
 
 
@@ -55,6 +57,7 @@ def password_reset_view(request):
         return redirect('users:login')
     else:
         return render(request, 'users/password_reset.html')
+
 
 def register_view(request):
     if request.user.is_authenticated:
@@ -106,6 +109,10 @@ def login_view(request):
         if form.is_valid():
             user = form.get_user()
             login(request, user)
+
+            # Объединяем гостевую и пользовательскую корзину
+            merge_guest_cart(request)
+
             messages.success(request, f"Добро пожаловать, {user.username}!")
             return redirect('home')
         else:
@@ -172,3 +179,13 @@ def profile_view(request):
     return render(request, 'users/profile.html', {
         'form': form,
     })
+
+
+class CustomLoginView(LoginView):
+    template_name = 'users/login.html'
+    redirect_authenticated_user = True
+
+    def get_success_url(self):
+        # Объединяем корзины после входа
+        merge_guest_cart(self.request)
+        return super().get_success_url()

@@ -2,6 +2,8 @@
 
 from django import forms
 
+from orders.models import Order
+
 
 class OrderConfirmForm(forms.Form):
     DELIVERY_CHOICES = (
@@ -18,6 +20,20 @@ class OrderConfirmForm(forms.Form):
         ('morning', 'Утро (9:00–13:00)'),
         ('afternoon', 'День (13:00–17:00)'),
     )
+
+    class Meta:
+        model = Order
+        fields = [
+            'name',
+            'phone',
+            'email',
+            'delivery_type',
+            'address',
+            'pickup_point',
+            'delivery_date',
+            'time_slot',
+            'payment_type'
+        ]
 
     delivery_type = forms.ChoiceField(
         choices=DELIVERY_CHOICES,
@@ -67,7 +83,7 @@ class OrderConfirmForm(forms.Form):
         pickup_point = cleaned_data.get('pickup_point')
 
         if delivery_type == 'pickup' and not pickup_point:
-            raise forms.ValidationError("Выберите пункт самовывоза")
+            self.add_error('pickup_point', "Выберите пункт самовывоза")
 
         return cleaned_data
 

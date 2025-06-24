@@ -12,6 +12,7 @@ from .models import Product, Category, ProductImage
 def product_list_view(request):
     query = request.GET.get('q', '')
     category_id = request.GET.get('category')
+    sort_by = request.GET.get('sort', 'default')
 
     # Получаем все категории
     categories = Category.objects.all()
@@ -27,8 +28,18 @@ def product_list_view(request):
         selected_category = None
         products = Product.objects.all()
 
+    # Сортировка
+    if sort_by == 'price_asc':
+        products = products.order_by('price')
+    elif sort_by == 'price_desc':
+        products = products.order_by('-price')
+    elif sort_by == 'name_asc':
+        products = products.order_by('name')
+    elif sort_by == 'name_desc':
+        products = products.order_by('-name')
+
     # Пагинация
-    paginator = Paginator(products, 6)  # ← important!
+    paginator = Paginator(products, 8)
     page_number = request.GET.get('page')
     try:
         page_obj = paginator.page(page_number)
@@ -42,6 +53,7 @@ def product_list_view(request):
         'categories': categories,
         'selected_category': selected_category,
         'query': query,
+        'sort_by': sort_by,
     })
 
 
