@@ -3,13 +3,6 @@
 {% block content %}
 <div class="container mt-5">
     <h2>Добавить товар</h2>
-
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-        {% endfor %}
-    {% endif %}
-
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
         {{ product_form.as_p }}

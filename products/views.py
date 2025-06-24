@@ -1,5 +1,6 @@
 # products/views.py
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.db.models import Sum
 from django.shortcuts import render, get_object_or_404, redirect
@@ -25,8 +26,17 @@ def product_list_view(request):
         selected_category = get_object_or_404(Category, id=category_id)
         products = selected_category.products.all()
     else:
+        # Проверяем кэш для популярных товаров
+        popular_products = cache.get('popular_products')
+
+        if not popular_products:
+            # Если не найдено — загружаем из БД
+            popular_products = Product.objects.filter(is_popular=True).prefetch_related('images')
+            # Сохраняем в кэш на 5 минут
+            cache.set('popular_products', popular_products, 300)
+
+        products = popular_products
         selected_category = None
-        products = Product.objects.all()
 
     # Сортировка
     if sort_by == 'price_asc':
@@ -39,14 +49,13 @@ def product_list_view(request):
         products = products.order_by('-name')
 
     # Пагинация
-    paginator = Paginator(products, 8)
+    paginator = Paginator(products, 8)  # По 8 товаров на странице
     page_number = request.GET.get('page')
     try:
         page_obj = paginator.page(page_number)
-    except PageNotAnInteger:
+    except Exception as e:
+        # Если номер страницы неверный — показываем первую
         page_obj = paginator.page(1)
-    except EmptyPage:
-        page_obj = paginator.page(paginator.num_pages)
 
     return render(request, 'products/product_list.html', {
         'products': page_obj,

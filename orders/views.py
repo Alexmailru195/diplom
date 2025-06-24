@@ -1,4 +1,6 @@
 # orders/views.py
+from datetime import datetime
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -147,12 +149,7 @@ def order_detail_view(request, order_id):
 
 @login_required
 def order_confirm_view(request):
-    """
-    Оформление заказа
-    """
-    # Получаем товары из корзины текущего пользователя
     cart_items = CartItem.objects.filter(cart__user=request.user).select_related('product')
-
     if not cart_items.exists():
         messages.warning(request, "Корзина пуста")
         return redirect('cart:cart_view')
@@ -175,21 +172,19 @@ def order_confirm_view(request):
 
             try:
                 with transaction.atomic():
-                    from datetime import date, datetime
-
-                    # Парсим дату и время доставки
+                    # Парсим дату доставки
                     delivery_date = None
                     if delivery_date_str:
                         try:
                             delivery_date = datetime.strptime(delivery_date_str, '%Y-%m-%d').date()
                         except ValueError:
-                            raise forms.ValidationError("Неверный формат даты")
+                            raise Exception("Неверный формат даты")
 
                     # Проверка обязательных данных для доставки
                     if delivery_type == 'courier' and (not delivery_date or not time_slot):
-                        raise forms.ValidationError("Выбрав доставку, необходимо указать дату и тайм-слот.")
+                        raise Exception("Выбрав доставку, необходимо указать дату и тайм-слот.")
 
-                    # Создаём заказ
+                    # Создаем заказ
                     order = Order.objects.create(
                         user=request.user,
                         name=name,
@@ -205,7 +200,7 @@ def order_confirm_view(request):
                         payment_type=payment_type
                     )
 
-                    # Устанавливаем пункт самовывоза
+                    # Если выбран самовывоз — привязываем к пункту выдачи
                     if delivery_type == 'pickup' and pickup_point_id:
                         try:
                             pickup_point = Point.objects.get(id=pickup_point_id)
@@ -215,155 +210,67 @@ def order_confirm_view(request):
                             messages.error(request, "Пункт самовывоза не найден")
                             return redirect('orders:checkout')
 
-                    # Переносим товары в заказ
+                    # Переносим товары в заказ и списываем со склада
                     for cart_item in cart_items:
                         product = cart_item.product
                         quantity_needed = cart_item.quantity
 
-                        if delivery_type == 'courier':
-                            warehouse = Point.objects.filter(is_warehouse=True).first()
-                            if not warehouse:
-                                raise Exception("Нет доступного склада")
+                        remaining_quantity = quantity_needed
+                        warehouse = Point.objects.filter(is_warehouse=True).first()
 
-                            remaining_quantity = quantity_needed
-                            all_points = Point.objects.all()
+                        if not warehouse:
+                            raise Exception("Нет доступного склада")
 
-                            for point in all_points:
-                                try:
-                                    pinv = PointInventory.objects.select_for_update().get(product=product, point=point)
-                                except PointInventory.DoesNotExist:
-                                    continue
-
-                                if pinv.quantity >= remaining_quantity:
-                                    pinv.quantity -= remaining_quantity
-                                    pinv.save()
-                                    StockHistory.objects.create(
-                                        product=product,
-                                        point=point,
-                                        quantity=remaining_quantity,
-                                        action='writeoff',
-                                        comment=f"Списано с '{point.name}' при оформлении заказа #{order.id}"
-                                    )
-                                    remaining_quantity = 0
-                                    break
-                                else:
-                                    take_amount = pinv.quantity
-                                    pinv.quantity = 0
-                                    pinv.save()
-                                    StockHistory.objects.create(
-                                        product=product,
-                                        point=point,
-                                        quantity=take_amount,
-                                        action='writeoff',
-                                        comment=f"Частичное списание с '{point.name}' при оформлении заказа #{order.id}"
-                                    )
-                                    remaining_quantity -= take_amount
-
-                            if remaining_quantity > 0:
-                                raise Exception(f"Недостаточно '{product.name}' для выполнения заказа")
-
-                        elif delivery_type == 'pickup' and pickup_point_id:
-                            try:
-                                pickup_point = Point.objects.get(id=pickup_point_id)
-                                order.pickup_point = pickup_point
-                                order.save()
-                            except Point.DoesNotExist:
-                                raise Exception("Пункт самовывоза не найден")
-
-                            warehouse = Point.objects.filter(is_warehouse=True).first()
-                            if not warehouse:
-                                raise Exception("Нет доступного склада")
-
-                            remaining_quantity = quantity_needed
-                            try:
-                                pinv_warehouse = PointInventory.objects.select_for_update().get(
-                                    product=product,
-                                    point=warehouse
-                                )
-                                if pinv_warehouse.quantity >= remaining_quantity:
-                                    pinv_warehouse.quantity -= remaining_quantity
-                                    pinv_warehouse.save()
-                                    StockHistory.objects.create(
-                                        product=product,
-                                        point=warehouse,
-                                        quantity=remaining_quantity,
-                                        action='writeoff',
-                                        comment=f"Списано с '{warehouse.name}' при оформлении заказа #{order.id}"
-                                    )
-                                    remaining_quantity = 0
-                                else:
-                                    take_amount = pinv_warehouse.quantity
-                                    pinv_warehouse.quantity = 0
-                                    pinv_warehouse.save()
-                                    StockHistory.objects.create(
-                                        product=product,
-                                        point=warehouse,
-                                        quantity=take_amount,
-                                        action='writeoff',
-                                        comment=f"Частичное списание с '{warehouse.name}' при оформлении заказа #{order.id}"
-                                    )
-                                    remaining_quantity -= take_amount
-                            except PointInventory.DoesNotExist:
-                                pass
-
-                            other_points = PointInventory.objects.select_for_update().filter(
-                                product=product,
-                                quantity__gt=0
-                            ).exclude(point_id=warehouse.id).order_by('-quantity')
-
-                            for inv in other_points:
-                                if remaining_quantity <= 0:
-                                    break
-
-                                take_amount = min(inv.quantity, remaining_quantity)
-                                inv.quantity -= take_amount
-                                inv.save()
-                                remaining_quantity -= take_amount
-
-                                StockHistory.objects.create(
-                                    product=product,
-                                    point=inv.point,
-                                    quantity=take_amount,
-                                    action='writeoff',
-                                    comment=f"Списано с '{inv.point.name}' при оформлении заказа #{order.id}"
-                                )
-
-                            if remaining_quantity > 0:
-                                raise Exception(f"Недостаточно '{product.name}' для выполнения заказа")
-
-                            # Перемещаем товар на точку самовывоза
-                            try:
-                                pinv_pickup = PointInventory.objects.select_for_update().get(
-                                    product=product,
-                                    point=pickup_point
-                                )
-                            except PointInventory.DoesNotExist:
-                                pinv_pickup = PointInventory.objects.create(
-                                    product=product,
-                                    point=pickup_point,
-                                    quantity=0
-                                )
-
-                            pinv_pickup.quantity += quantity_needed
-                            pinv_pickup.save()
-
+                        # Сначала списываем с основного склада
+                        try:
+                            pinv = PointInventory.objects.select_for_update().get(product=product, point=warehouse)
+                            take_amount = min(pinv.quantity, remaining_quantity)
+                            pinv.quantity -= take_amount
+                            pinv.save()
                             StockHistory.objects.create(
                                 product=product,
-                                point=pickup_point,
-                                quantity=quantity_needed,
-                                action='add',
-                                comment=f"Добавлено на '{pickup_point.name}' при оформлении заказа #{order.id}"
+                                point_from=warehouse,
+                                quantity=take_amount,
+                                action='sale',
+                                comment=f"Списано с '{warehouse.name}'"
                             )
+                            remaining_quantity -= take_amount
+                        except PointInventory.DoesNotExist:
+                            pass  # Нет товара на складе, продолжаем поиск
+
+                        # Берём с других точек
+                        other_points = PointInventory.objects.select_for_update().filter(
+                            product=product,
+                            quantity__gt=0
+                        ).exclude(point_id=warehouse.id).order_by('-quantity')
+
+                        for inv in other_points:
+                            if remaining_quantity <= 0:
+                                break
+                            take_amount = min(inv.quantity, remaining_quantity)
+                            inv.quantity -= take_amount
+                            inv.save()
+                            StockHistory.objects.create(
+                                product=product,
+                                point_from=inv.point,
+                                quantity=take_amount,
+                                action='sale',
+                                comment=f"Списано с '{inv.point.name}'"
+                            )
+                            remaining_quantity -= take_amount
+
+                        if remaining_quantity > 0:
+                            raise Exception(f"Недостаточно '{product.name}' для выполнения заказа")
 
                         # Добавляем товар в заказ
                         OrderItem.objects.create(
                             order=order,
                             product=product,
-                            quantity=quantity_needed,
+                            quantity=cart_item.quantity,
                             price=product.price
                         )
 
-                    # Очищаем корзину после успешного оформления
+                    # Очищаем корзину
                     cart_items.delete()
 
                     # Отправляем email только при онлайн-оплате
@@ -384,7 +291,7 @@ def order_confirm_view(request):
                             fail_silently=False
                         )
                         messages.success(request, "Письмо с информацией по оплате отправлено на ваш email.")
-                    elif payment_type == 'cash':
+                    else:
                         messages.success(request, "Заказ оформлен успешно!")
 
                     return redirect('orders:order_detail', order_id=order.id)
@@ -392,10 +299,7 @@ def order_confirm_view(request):
             except Exception as e:
                 messages.error(request, f"Ошибка при оформлении заказа: {str(e)}")
                 return redirect('orders:checkout')
-        else:
-            messages.error(request, "Форма заполнена неверно.")
-            print(form.errors)
-            return redirect('orders:checkout')
+
     else:
         form = OrderConfirmForm()
 

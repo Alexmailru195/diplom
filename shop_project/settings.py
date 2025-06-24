@@ -11,6 +11,10 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
+import os
+
+from dotenv import load_dotenv
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -38,7 +42,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    # Third-party apps
     'rest_framework',
 
     # Local apps
@@ -89,17 +92,18 @@ WSGI_APPLICATION = 'shop_project.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
+# Настройки БД
 DATABASES = {
     'default': {
         'ENGINE': 'mssql',
-        'NAME': 'diplom_db',
-        'USER': 'sa',
-        'PASSWORD': 'mailru195',
-        'HOST': 'localhost',
-        'PORT': '',
+        'NAME': os.getenv('DB_NAME'),
+        'USER': os.getenv('DB_USER'),
+        'PASSWORD': os.getenv('DB_PASSWORD'),
+        'HOST': os.getenv('DB_HOST'),
+        'PORT': os.getenv('DB_PORT'),
 
         'OPTIONS': {
-            'driver': 'ODBC Driver 17 for SQL Server',
+            'driver': os.getenv('DB_DRIVER'),
         },
     }
 }
@@ -159,3 +163,18 @@ EMAIL_HOST_PASSWORD = 'lbmbywboxucntimh'
 DEFAULT_FROM_EMAIL = 'mailru195@yandex.ru'
 
 CONTACT_RECEIVER = 'mailru195@yandex.ru'
+
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': f'redis://127.0.0.1:6379/0',
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'PASSWORD': '',
+            'SOCKET_TIMEOUT': 5,
+            'CONNECTION_POOL_KWARGS': {'max_connections': 100},
+            'PICKLE_VERSION': -1,
+        }
+    }
+}

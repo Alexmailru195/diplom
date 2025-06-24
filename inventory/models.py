@@ -57,13 +57,13 @@ class StockMovement(models.Model):
         Point,
         on_delete=models.SET_NULL,
         null=True,
-        related_name='stock_out'
+        related_name='movement_out'
     )
     to_point = models.ForeignKey(
         Point,
         on_delete=models.SET_NULL,
         null=True,
-        related_name='stock_in'
+        related_name='movement_in'
     )
     quantity = models.PositiveIntegerField("Количество")
     timestamp = models.DateTimeField(auto_now_add=True)
@@ -73,18 +73,26 @@ class StockMovement(models.Model):
 
 
 class StockHistory(models.Model):
-    ACTION_CHOICES = (
-        ('add', 'Добавление'),
-        ('writeoff', 'Списание'),
-        ('move', 'Перемещение'),
-    )
-
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    point = models.ForeignKey(Point, on_delete=models.CASCADE)
-    quantity = models.PositiveIntegerField()
-    action = models.CharField(max_length=10, choices=ACTION_CHOICES)
+    point_from = models.ForeignKey(
+        Point,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='stock_history_out'
+    )
+    quantity = models.PositiveIntegerField(default=0)
+    action = models.CharField(max_length=10, choices=[
+        ('sale', 'Списание'),
+        ('move', 'Перемещение'),
+        ('add', 'Добавление'),
+    ])
     comment = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.action.capitalize()} {self.product.name} — {self.quantity} шт. ({self.point.name})"
+        return f"{self.product.name} - {self.get_action_display()}"
+
+    class Meta:
+        verbose_name = "История инвентаря"
+        verbose_name_plural = "История инвентаря"

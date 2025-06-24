@@ -120,25 +120,6 @@
     </form>
 </div>
 
-<script src="https://api-maps.yandex.ru/2.1/?apikey=ВАШ_API_KEY&lang=ru_RU"></script>
-<script>
-    ymaps.ready(function () {
-        var map = new ymaps.Map("map", {
-            center: [55.7558, 37.6176],
-            zoom: 10
-        });
-
-        // Добавляем маркеры
-        {% for pickup_point in points %}
-        map.geoObjects.add(
-            new ymaps.Placemark([{{ pickup_point.latitude }}, {{ pickup_point.longitude }}], {
-                balloonContent: "{{ pickup_point.name }}"
-            })
-        );
-        {% endfor %}
-    });
-</script>
-
 <!-- Переключение между самовывозом и доставкой -->
 <script>
     document.addEventListener('DOMContentLoaded', function () {
