@@ -35,7 +35,15 @@
             {% for item in history %}
             <tr>
                 <td>{{ item.product.name }}</td>
-                <td>{{ item.point.name }}</td>
+                <td>
+                    {% if item.point_from %}
+                        {{ item.point_from.name }}
+                    {% elif item.point_to %}
+                        {{ item.point_to.name }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
                 <td>{{ item.quantity }}</td>
                 <td>{{ item.get_action_display }}</td>
                 <td>{{ item.comment|default:"—" }}</td>

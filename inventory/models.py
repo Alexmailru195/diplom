@@ -20,6 +20,35 @@ class PointInventory(models.Model):
     quantity = models.PositiveIntegerField(default=0, verbose_name=_("Количество"))
     updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Обновлено"))
 
+    def save(self, *args, **kwargs):
+        try:
+            prev = PointInventory.objects.get(pk=self.pk)
+            if self.quantity > prev.quantity:
+                added = self.quantity - prev.quantity
+                # Записываем только добавление
+                StockHistory.objects.create(
+                    product=self.product,
+                    point_to=self.point,
+                    quantity=added,
+                    action='add',
+                    comment=f"Добавлено {added} шт. товара '{self.product.name}' на '{self.point.name}'."
+                )
+            elif self.quantity < prev.quantity:
+                removed = prev.quantity - self.quantity
+                # Записываем только списание
+                StockHistory.objects.create(
+                    product=self.product,
+                    point_from=self.point,
+                    quantity=removed,
+                    action='sale',
+                    comment=f"Списано {removed} шт. товара '{self.product.name}' с '{self.point.name}'."
+                )
+
+        except PointInventory.DoesNotExist:
+            pass  # Новая запись — можно не логировать
+
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.product.name} — {self.point.name}, {self.quantity} шт."
 
@@ -73,6 +102,12 @@ class StockMovement(models.Model):
 
 
 class StockHistory(models.Model):
+    ACTION_CHOICES = (
+        ('sale', 'Списание'),
+        ('move', 'Перемещение'),
+        ('add', 'Добавление'),
+    )
+
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     point_from = models.ForeignKey(
         Point,
@@ -81,12 +116,15 @@ class StockHistory(models.Model):
         blank=True,
         related_name='stock_history_out'
     )
+    point_to = models.ForeignKey(
+        Point,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='stock_history_in'
+    )
     quantity = models.PositiveIntegerField(default=0)
-    action = models.CharField(max_length=10, choices=[
-        ('sale', 'Списание'),
-        ('move', 'Перемещение'),
-        ('add', 'Добавление'),
-    ])
+    action = models.CharField(max_length=10, choices=ACTION_CHOICES)
     comment = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

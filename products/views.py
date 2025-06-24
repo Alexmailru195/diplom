@@ -26,17 +26,7 @@ def product_list_view(request):
         selected_category = get_object_or_404(Category, id=category_id)
         products = selected_category.products.all()
     else:
-        # Проверяем кэш для популярных товаров
-        popular_products = cache.get('popular_products')
-
-        if not popular_products:
-            # Если не найдено — загружаем из БД
-            popular_products = Product.objects.filter(is_popular=True).prefetch_related('images')
-            # Сохраняем в кэш на 5 минут
-            cache.set('popular_products', popular_products, 300)
-
-        products = popular_products
-        selected_category = None
+        products = Product.objects.all()
 
     # Сортировка
     if sort_by == 'price_asc':
@@ -60,7 +50,6 @@ def product_list_view(request):
     return render(request, 'products/product_list.html', {
         'products': page_obj,
         'categories': categories,
-        'selected_category': selected_category,
         'query': query,
         'sort_by': sort_by,
     })

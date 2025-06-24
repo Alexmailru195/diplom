@@ -32,7 +32,7 @@ def move_inventory(request):
 
             try:
                 with transaction.atomic():
-                    from_inv, created = PointInventory.objects.get_or_create(
+                    from_inv, created = PointInventory.objects.select_for_update().get_or_create(
                         product=product,
                         point=from_point,
                         defaults={'quantity': 0}
@@ -54,31 +54,13 @@ def move_inventory(request):
                     to_inv.quantity += quantity
                     to_inv.save()
 
-                    # Создаём запись в истории
+                    # Создаем запись в StockMovement (если нужно)
                     StockMovement.objects.create(
                         movement_type='move',
                         product_inventory=from_inv,
                         from_point=from_point,
                         to_point=to_point,
                         quantity=quantity
-                    )
-
-                    # Сохраняем историю списания (если нужно)
-                    StockHistory.objects.create(
-                        product=product,
-                        point=from_point,
-                        quantity=quantity,
-                        action='writeoff',
-                        comment="Товар перемещён"
-                    )
-
-                    # Сохраняем историю добавления
-                    StockHistory.objects.create(
-                        product=product,
-                        point=to_point,
-                        quantity=quantity,
-                        action='add',
-                        comment="Товар перемещён"
                     )
 
                     messages.success(request, "Товар успешно перемещён")
@@ -132,7 +114,7 @@ def inventory_detail_view(request, inventory_id):
     })
 
 
-@user_passes_test(lambda u: u.is_superuser or u.is_staff or u.groups.filter(name='Модераторы').exists())
+@permission_required
 def add_inventory(request):
     if request.method == 'POST':
         form = PointInventoryForm(request.POST)
@@ -153,7 +135,7 @@ def add_inventory(request):
                 else:
                     pinv.quantity = quantity
 
-                pinv.save()
+                pinv.save()  # Логика записи истории уже внутри метода save()
 
             messages.success(request, f"{'Создана' if created else 'Обновлена'} запись для '{product.name}' на '{point.name}'. Новое количество: {pinv.quantity}")
             return redirect('inventory:stock_list')
