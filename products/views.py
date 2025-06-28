@@ -27,6 +27,7 @@ def product_list_view(request):
         products = selected_category.products.all()
     else:
         products = Product.objects.all()
+        selected_category = None
 
     # Сортировка
     if sort_by == 'price_asc':
@@ -39,12 +40,11 @@ def product_list_view(request):
         products = products.order_by('-name')
 
     # Пагинация
-    paginator = Paginator(products, 8)  # По 8 товаров на странице
+    paginator = Paginator(products, 8)
     page_number = request.GET.get('page')
     try:
         page_obj = paginator.page(page_number)
-    except Exception as e:
-        # Если номер страницы неверный — показываем первую
+    except (PageNotAnInteger, EmptyPage):
         page_obj = paginator.page(1)
 
     return render(request, 'products/product_list.html', {
@@ -52,6 +52,7 @@ def product_list_view(request):
         'categories': categories,
         'query': query,
         'sort_by': sort_by,
+        'selected_category': selected_category
     })
 
 
