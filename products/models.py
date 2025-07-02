@@ -48,7 +48,7 @@ class Product(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         verbose_name="Категория",
-        related_name = 'products'
+        related_name='products'
     )
     is_active = models.BooleanField("Активный", default=True)
     is_popular = models.BooleanField("Популярный", default=False)

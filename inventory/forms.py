@@ -4,7 +4,6 @@ from django import forms
 
 from pos.models import Point
 from products.models import Product
-from .models import PointInventory
 
 
 class InventoryMoveForm(forms.Form):

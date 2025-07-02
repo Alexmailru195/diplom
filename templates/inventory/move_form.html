@@ -29,15 +29,6 @@
                     </form>
                 </div>
             </div>
-
-            <!-- Сообщения -->
-            {% if messages %}
-                <ul class="mt-3 list-unstyled">
-                    {% for message in messages %}
-                        <li class="alert alert-{{ message.tags }} rounded">{{ message }}</li>
-                    {% endfor %}
-                </ul>
-            {% endif %}
         </div>
     </div>
 </div>

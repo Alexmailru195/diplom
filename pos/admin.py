@@ -11,11 +11,11 @@ class PointAdmin(admin.ModelAdmin):
     list_filter = ('is_active',)
 
 
-    @admin.action(description='Активировать выбранные пункты')
-    def activate_points(self, request, queryset):
-        queryset.update(is_active=True)
+@admin.action(description='Активировать выбранные пункты')
+def activate_points(self, request, queryset):
+    queryset.update(is_active=True)
 
 
-    @admin.action(description='Деактивировать выбранные пункты')
-    def deactivate_points(self, queryset):
-        queryset.update(is_active=False)
+@admin.action(description='Деактивировать выбранные пункты')
+def deactivate_points(self, queryset):
+    queryset.update(is_active=False)

@@ -86,4 +86,3 @@ class OrderConfirmForm(forms.Form):
             self.add_error('pickup_point', "Выберите пункт самовывоза")
 
         return cleaned_data
-

@@ -40,6 +40,7 @@ def server_error_view(request):
     """
     return render(request, '500.html', status=500)
 
+
 def logout_view(request):
     logout(request)
     messages.info(request, "Вы вышли из аккаунта")

@@ -8,7 +8,7 @@ from django.contrib.auth.forms import SetPasswordForm
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth.views import PasswordResetConfirmView, LoginView
 from django.core.mail import send_mail
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
 from django.template.loader import render_to_string
 from django.urls import reverse, reverse_lazy
 from django.utils.encoding import force_bytes
@@ -17,7 +17,6 @@ from django.utils.http import urlsafe_base64_encode
 
 from cart.views import merge_guest_cart
 from .forms import RegisterForm, LoginForm, ChangePasswordForm, ProfileUpdateForm
-
 
 User = get_user_model()
 
@@ -89,7 +88,7 @@ def register_view(request):
                     fail_silently=False
                 )
                 messages.success(request, "Вы успешно зарегистрировались! Проверьте вашу почту.")
-            except Exception as e:
+            except Exception:
                 messages.warning(request, "Ошибка при отправке уведомления на почту.")
 
             return redirect('users:login')

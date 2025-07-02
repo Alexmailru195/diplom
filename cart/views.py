@@ -1,12 +1,12 @@
 # cart/views.py
+from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 
-from .models import Cart, CartItem, GuestCart
-from django.shortcuts import get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required
 from products.models import Product
+from .models import Cart, CartItem, GuestCart
 
 
 def cart_view(request):
@@ -112,7 +112,6 @@ def update_cart(request):
             except CartItem.DoesNotExist:
                 pass
         else:
-            from django.contrib.sessions.backends.db import SessionStore
             session_key = request.session.session_key or ''
             if not session_key:
                 request.session.save()
@@ -135,7 +134,6 @@ def update_cart(request):
 @csrf_exempt
 def update_cart_ajax(request):
     if request.method == 'POST':
-        product_id = request.POST.get('product_id')
         quantity = int(request.POST.get('quantity'))
         cart_item_id = request.POST.get('cart_item_id')
 

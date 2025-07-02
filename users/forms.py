@@ -16,7 +16,7 @@ class RegisterForm(UserCreationForm):
     email = forms.EmailField(
         label='Email',
         widget=forms.EmailInput(attrs={'placeholder': 'Email'}),
-        required = True
+        required=True
     )
     username = forms.CharField(
         label='Логин',

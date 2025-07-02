@@ -49,6 +49,7 @@ def create_order_for_user(user, delivery_type, payment_type, address=None):
 
     return order, None
 
+
 def send_order_status_email(order, user):
     """
     Отправка email-уведомления об изменении статуса заказа

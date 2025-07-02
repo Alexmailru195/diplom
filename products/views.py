@@ -1,6 +1,4 @@
 # products/views.py
-from django.contrib.auth.decorators import login_required
-from django.core.cache import cache
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.db.models import Sum
 from django.shortcuts import render, get_object_or_404, redirect
@@ -65,20 +63,13 @@ def product_detail_view(request, pk):
     inventories = PointInventory.objects.filter(product=product).select_related('point')
     images = product.images.all()
 
-    context = {
-        'product': product,
-        'inventories': inventories,
-        'attributes': attributes,
-        'images': images
-    }
-
-    # Получаем общее количество на всех точках
     total_stock = PointInventory.objects.filter(product=product).aggregate(total=Sum('quantity'))['total'] or 0
 
     return render(request, 'products/product_detail.html', {
         'product': product,
-        'images': images,
+        'inventories': inventories,
         'attributes': attributes,
+        'images': images,
         'total_stock': total_stock
     })
 

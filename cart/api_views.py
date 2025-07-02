@@ -1,12 +1,13 @@
 # cart/api_views.py
 
-from rest_framework.decorators import action
-from rest_framework.viewsets import ViewSet
-from rest_framework.response import Response
 from rest_framework import status
-from .models import Cart, CartItem
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.viewsets import ViewSet
+
 from products.models import Product
-from .serializers import CartSerializer, CartItemSerializer, AddToCartSerializer
+from .models import Cart
+from .serializers import CartSerializer, AddToCartSerializer
 
 
 class CartViewSet(ViewSet):

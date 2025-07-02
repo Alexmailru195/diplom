@@ -5,16 +5,14 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
 
-from products.views import product_list_view
-from . import views
-
 from shop_project.views import home_view
+from . import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
 
     # Главная страница
-    path('', home_view, name='home'),  # ← только один раз пустой маршрут
+    path('', home_view, name='home'),
 
     # Приложения
     path('products/', include(('products.urls', 'products'), namespace='products')),

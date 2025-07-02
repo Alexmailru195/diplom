@@ -1,6 +1,5 @@
 # orders/views.py
 from datetime import datetime
-
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -11,53 +10,103 @@ from django.http import Http404
 from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import render_to_string
 from django.urls import reverse
-from django.utils.dateparse import parse_date
 from django.utils.html import strip_tags
-
 from cart.models import CartItem
 from delivery.models import DeliveryZone
 from inventory.models import PointInventory, StockHistory
+from orders.forms import OrderConfirmForm
 from orders.utils import send_order_status_email
 from pos.models import Point
-from . import forms
-from .forms import OrderConfirmForm
 from .models import Order, OrderItem
 
 
 @login_required
 def update_order_status(request, order_id):
+    """
+    Обновление статуса заказа
+    """
     try:
-        order = Order.objects.get(id=order_id)
-    except Order.DoesNotExist:
+        order = get_object_or_404(Order, id=order_id)
+    except Exception:
         messages.error(request, "Заказ не найден")
         return redirect('orders:order_detail', order_id=order_id)
 
+    # Статусы, которые нельзя менять
     forbidden_statuses = ['cancelled', 'delivered']
-
     if order.status in forbidden_statuses:
-        messages.warning(request, f"Заказ с статусом '{order.get_status_display()}' редактировать нельзя.")
-        return redirect('orders:order_detail', order_id=order_id)
+        messages.warning(
+            request,
+            f"Заказ с статусом '{order.get_status_display()}' редактировать нельзя."
+        )
+        return redirect('orders:order_detail', order_id=order.id)
 
-    if not request.user.is_superuser and request.user != order.manager and request.user != order.user:
+    # Проверка прав
+    is_admin = request.user.is_superuser or request.user.is_staff
+    is_owner = request.user == order.user
+    is_manager = hasattr(order, 'manager') and request.user == order.manager
+
+    if not (is_admin or is_owner or is_manager):
         messages.error(request, "У вас нет прав на изменение этого заказа")
-        return redirect('orders:order_detail', order_id=order_id)
+        return redirect('orders:order_detail', order_id=order.id)
 
     if request.method == 'POST':
         new_status = request.POST.get('status')
-
         valid_statuses = [key for key, _ in Order.STATUS_CHOICES]
         if new_status in valid_statuses:
             old_status = order.status
             order.status = new_status
             order.save()
+            # Отправляем уведомление
+            send_order_status_email(order, order.user)
 
-            # Отправляем уведомление пользователю
-            send_order_status_email(order, order.user)  # ← отправляем email пользователю
+            # Возвращаем товар при отмене
+            if new_status == 'cancelled':
+                try:
+                    with transaction.atomic():
+                        for item in order.items.all():
+                            product = item.product
+                            quantity = item.quantity
+
+                            if order.delivery_type == 'pickup' and order.pickup_point:
+                                point = order.pickup_point
+                                pinv = PointInventory.objects.select_for_update().get(product=product, point=point)
+                                pinv.quantity += quantity
+                                pinv.save()
+                                StockHistory.objects.create(
+                                    product=product,
+                                    point_from=point,
+                                    quantity=quantity,
+                                    action='return',
+                                    comment=f"Возвращено после отмены заказа #{order.id}"
+                                )
+
+                            elif order.delivery_type == 'courier':
+                                warehouse = Point.objects.filter(is_warehouse=True).first()
+                                if not warehouse:
+                                    raise Exception("Нет доступного склада")
+
+                                pinv = PointInventory.objects.select_for_update().get(product=product, point=warehouse)
+                                pinv.quantity += quantity
+                                pinv.save()
+                                StockHistory.objects.create(
+                                    product=product,
+                                    point_from=warehouse,
+                                    quantity=quantity,
+                                    action='return',
+                                    comment=f"Возвращено после отмены заказа #{order.id}"
+                                )
+
+                except Exception as e:
+                    messages.error(request, f"Ошибка возврата товара: {str(e)}")
+                    order.status = old_status  # Откатываем статус
+                    order.save()
+                    return redirect('orders:order_detail', order_id=order.id)
+
             messages.success(request, f"Статус заказа изменён на {order.get_status_display()}")
         else:
             messages.error(request, "Неверный статус")
 
-        return redirect('orders:order_detail', order_id=order_id)
+    return redirect('orders:order_detail', order_id=order_id)
 
 
 @login_required
@@ -66,21 +115,16 @@ def order_list_view(request):
     Список всех заказов (для менеджеров и админов)
     """
     if request.user.is_superuser or request.user.is_staff:
-        # Администраторы и менеджеры видят все заказы
         status_filter = request.GET.get('status')
         orders = Order.objects.all().order_by('-created_at')
-
         if status_filter:
             orders = orders.filter(status=status_filter)
-
         return render(request, 'orders/admin_order_list.html', {
             'orders': orders,
             'STATUS_CHOICES': [choice for choice in Order.STATUS_CHOICES]
         })
     else:
-        # Обычные пользователи видят только свои заказы
         return user_orders_view(request)
-
 
 
 @login_required
@@ -93,7 +137,6 @@ def all_orders_view(request):
 
     status_filter = request.GET.get('status')
     orders = Order.objects.all().order_by('-created_at')
-
     if status_filter:
         orders = orders.filter(status=status_filter)
 
@@ -110,7 +153,6 @@ def user_orders_view(request):
     """
     status_filter = request.GET.get('status')
     orders = Order.objects.filter(user=request.user).order_by('-created_at')
-
     if status_filter:
         orders = orders.filter(status=status_filter)
 
@@ -131,7 +173,6 @@ def order_detail_view(request, order_id):
     is_owner = request.user == order.user
     is_admin = request.user.is_superuser
     is_manager = request.user.is_staff
-
     if not (is_admin or is_manager or is_owner):
         raise PermissionDenied("У вас нет прав на просмотр этого заказа")
 
@@ -214,10 +255,8 @@ def order_confirm_view(request):
                     for cart_item in cart_items:
                         product = cart_item.product
                         quantity_needed = cart_item.quantity
-
                         remaining_quantity = quantity_needed
                         warehouse = Point.objects.filter(is_warehouse=True).first()
-
                         if not warehouse:
                             raise Exception("Нет доступного склада")
 
@@ -281,7 +320,6 @@ def order_confirm_view(request):
                             'payment_url': payment_url
                         })
                         plain_message = strip_tags(html_message)
-
                         send_mail(
                             subject=f"Подтверждение заказа #{order.id}",
                             message=plain_message,
@@ -312,75 +350,6 @@ def order_confirm_view(request):
 
 
 @login_required
-def update_order_status(request, order_id):
-    """
-    Обновление статуса заказа
-    """
-    order = get_object_or_404(Order, id=order_id)
-
-    # Статусы, которые нельзя менять
-    forbidden_statuses = ['cancelled', 'delivered']
-
-    if order.status in forbidden_statuses:
-        messages.warning(
-            request,
-            f"Заказ с статусом '{order.get_status_display()}' редактировать нельзя."
-        )
-        return redirect('orders:order_detail', order_id=order.id)
-
-    # Проверяем права
-    if not request.user.is_superuser and request.user != order.manager:
-        messages.error(request, "У вас нет прав на изменение этого заказа")
-        return redirect('orders:order_detail', order_id=order.id)
-
-    if request.method == 'POST':
-        new_status = request.POST.get('status')
-
-        valid_statuses = [key for key, _ in Order.STATUS_CHOICES]
-        if new_status in valid_statuses:
-            old_status = order.status
-            order.status = new_status
-            order.save()
-
-            # Отправляем уведомление
-            send_order_status_email(order, order.user)
-
-            # Возвращаем товар при отмене
-            if new_status == 'cancelled':
-                try:
-                    with transaction.atomic():
-                        for item in order.items.all():
-                            product = item.product
-                            quantity = item.quantity
-
-                            if order.delivery_type == 'pickup' and order.pickup_point:
-                                point = order.pickup_point
-                                pinv = PointInventory.objects.select_for_update().get(product=product, point=point)
-                                pinv.quantity += quantity
-                                pinv.save()
-                            elif order.delivery_type == 'courier':
-                                warehouse = Point.objects.filter(is_warehouse=True).first()
-                                if not warehouse:
-                                    raise Exception("Нет доступного склада")
-
-                                pinv = PointInventory.objects.select_for_update().get(product=product, point=warehouse)
-                                pinv.quantity += quantity
-                                pinv.save()
-
-                except Exception as e:
-                    messages.error(request, f"Ошибка возврата товара: {str(e)}")
-                    order.status = old_status  # Откатываем статус
-                    order.save()
-                    return redirect('orders:order_detail', order_id=order.id)
-
-            messages.success(request, f"Статус заказа изменён на {order.get_status_display()}")
-        else:
-            messages.error(request, "Неверный статус")
-
-    return redirect('orders:order_detail', order_id=order_id)
-
-
-@login_required
 def profile_orders_view(request):
     """
     Отображение заказов в профиле
@@ -405,16 +374,11 @@ def payment_confirmation(request, order_id):
 
     if request.method == 'POST':
         card_number = request.POST.get('card_number')
-
         if card_number and len(card_number) >= 16:
             # Эмуляция успешной оплаты
             order.status = 'accepted'
             order.payment_status = 'paid'
             order.save()
-
-            from .utils import send_order_status_email
-            send_order_status_email(order, order.user)
-
             messages.success(request, "Оплата прошла успешно! Ваш заказ принят к выполнению.")
         else:
             messages.error(request, "Неверный формат номера карты.")
@@ -431,7 +395,7 @@ def payment_process(request, order_id):
     """
     try:
         order = get_object_or_404(Order, id=order_id, user=request.user)
-    except Exception as e:
+    except Exception:
         messages.warning(request, "Заказ не найден.")
         return redirect('orders:user_orders')
 
@@ -445,7 +409,6 @@ def payment_process(request, order_id):
             messages.success(request, "Оплата прошла успешно! Ваш заказ принят к выполнению.")
         else:
             messages.error(request, "Неверный формат номера карты.")
-
     elif request.method == 'GET':
         # Эмуляция оплаты через QR-код
         order.status = 'accepted'
@@ -453,7 +416,7 @@ def payment_process(request, order_id):
         order.save()
         messages.success(request, "Оплата прошла успешно! Ваш заказ принят к выполнению.")
 
-    return redirect('orders:order_detail', order_id=order.id)
+    return redirect('orders:order_detail', order_id=order_id)
 
 
 def calculate_delivery_cost(order):
@@ -461,6 +424,6 @@ def calculate_delivery_cost(order):
         return 0
 
     zone = DeliveryZone.objects.first()
-    distance = 5  # Примерное расстояние до адреса
+    distance = 5
     cost = zone.base_price + (zone.price_per_km * distance)
     return round(cost, 2)
