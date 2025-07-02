@@ -68,6 +68,8 @@ class MoveInventoryViewTest(InventoryTestBase):
         self.client.force_login(self.user)
         response = self.client.post(reverse('inventory:move_inventory'), data=data)
 
+        self.assertEqual(response.status_code, 302)  # ← Теперь используется
+
         from_inv = PointInventory.objects.get(product=self.product1, point=self.point1)
         to_inv = PointInventory.objects.get(product=self.product1, point=self.point2)
         self.assertEqual(from_inv.quantity, 40)
