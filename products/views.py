@@ -1,4 +1,5 @@
 # products/views.py
+from django.contrib import messages
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.db.models import Sum
 from django.shortcuts import render, get_object_or_404, redirect
@@ -96,7 +97,10 @@ def create_category(request):
         form = CategoryForm(request.POST)
         if form.is_valid():
             form.save()
-            return redirect('products:category_list')
+            messages.success(request, "Категория успешно создана!")
+            return redirect('products:create_category')
+        else:
+            messages.error(request, "Пожалуйста, исправьте ошибки в форме.")
     else:
         form = CategoryForm()
 
