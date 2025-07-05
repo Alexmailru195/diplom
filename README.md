@@ -61,7 +61,9 @@ git clone https://github.com/Alexmailru195/diplom
 
 ### 3. Установка зависимостей
 
+```bash
 pip install -r requirements.txt
+```
 
 ### 4. Настройка переменных окружения
 
@@ -83,17 +85,30 @@ pip install -r requirements.txt
 
 ### 5. Применение миграций и создание
 
-###### python manage.py makemigrations
-
-###### python manage.py migrate
+```bash
+python manage.py makemigrations
+```
+```bash
+python manage.py migrate
+```
 
 ### 6. Запуск сервера разработки и redis
+```bash
+python manage.py runserver
+```
 
-###### python manage.py runserver
-
-###### redis-server
-
+```bash
+redis-server
+```
 После запуска приложение будет доступно по адресу: http://127.0.0.1:8000.
+
+### 7. Создание суперпользователя
+
+Чтобы получить доступ к админке Django, создайте суперпользователя:
+
+```bash
+python manage.py createsuperuser
+```
 
 # Проверка кода:
 
@@ -101,11 +116,15 @@ pip install -r requirements.txt
 
 Для проверки соответствия кода стандарту PEP 8 используйте команду:
 
-###### flake8 .
+```bash
+flake8 .
+```
 
 # Лицензия:
 
 #### Этот проект распространяется под лицензией MIT.
+
+#### Copyright (c) 2025 Alexmailru195
 
 # Автор:
 
