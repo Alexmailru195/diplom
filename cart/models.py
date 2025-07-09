@@ -6,6 +6,11 @@ from products.models import Product
 
 
 class Cart(models.Model):
+    """
+    Модель корзины пользователя.
+    Каждый пользователь имеет только одну корзину, которая хранит список добавленных товаров.
+    """
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -19,7 +24,12 @@ class Cart(models.Model):
 
     @property
     def total_price(self):
-        """Рассчитывает общую сумму товаров в корзине"""
+        """
+        Считает общую стоимость всех товаров в корзине.
+
+        Returns:
+            float: Общая сумма заказа.
+        """
         return sum(item.total for item in self.items.all())
 
     class Meta:
@@ -28,6 +38,11 @@ class Cart(models.Model):
 
 
 class CartItem(models.Model):
+    """
+    Позиция товара в корзине.
+    Хранит информацию о количестве и цене конкретного товара в корзине.
+    """
+
     cart = models.ForeignKey(
         Cart,
         on_delete=models.CASCADE,
@@ -44,7 +59,12 @@ class CartItem(models.Model):
 
     @property
     def total(self):
-        """Рассчитывает сумму по одному товару"""
+        """
+        Рассчитывает стоимость одного товара с учётом количества.
+
+        Returns:
+            float: Общая цена указанного количества товара.
+        """
         return self.product.price * self.quantity
 
     def __str__(self):
@@ -56,6 +76,11 @@ class CartItem(models.Model):
 
 
 class GuestCart(models.Model):
+    """
+    Гостевая корзина.
+    Используется для временного хранения товаров неавторизованных пользователей.
+    """
+
     session_key = models.CharField(max_length=40)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=1)

@@ -7,6 +7,11 @@ from pos.models import Point
 
 
 class Order(models.Model):
+    """
+    Модель заказа.
+    Содержит информацию о клиенте, способах доставки и оплаты, статусе заказа и общей сумме.
+    """
+
     DELIVERY_CHOICES = (
         ('courier', 'Доставка'),
         ('pickup', 'Самовывоз'),
@@ -14,7 +19,7 @@ class Order(models.Model):
 
     PAYMENT_CHOICES = (
         ('online', 'Онлайн'),
-        ('cash', 'Наличные при получении'),
+        ('cash', 'Наличные/безналичные при получении'),
     )
 
     PAYMENT_STATUS_CHOICES = (
@@ -77,6 +82,11 @@ class Order(models.Model):
 
 
 class OrderItem(models.Model):
+    """
+    Позиция товара в заказе.
+    Хранит информацию о товаре, количестве, цене и общей стоимости позиции.
+    """
+
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items', verbose_name="Заказ")
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, verbose_name="Продукт")
     quantity = models.PositiveIntegerField(default=1, verbose_name="Количество")
@@ -84,6 +94,7 @@ class OrderItem(models.Model):
 
     @property
     def total(self):
+        """Рассчитывает общую стоимость одного товара с учётом количества."""
         return self.quantity * self.price
 
     def __str__(self):

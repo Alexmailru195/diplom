@@ -14,11 +14,26 @@ from .models import PointInventory, StockMovement, StockHistory
 
 
 def is_manager(user):
+    """
+    Проверяет, является ли пользователь менеджером (админ, стафф или модератор).
+    Используется в декораторе @user_passes_test.
+
+    Args:
+        user: Объект пользователя Django.
+
+    Returns:
+        bool: True, если пользователь является менеджером.
+    """
     return user.is_superuser or user.is_staff or user.groups.filter(name='Модераторы').exists()
 
 
 @user_passes_test(is_manager)
 def move_inventory(request):
+    """
+    Представление для перемещения товара между точками выдачи.
+    Работает только для авторизованных менеджеров и админов.
+    """
+
     form = InventoryMoveForm()
 
     if request.method == 'POST':
@@ -79,8 +94,10 @@ def move_inventory(request):
 @permission_required
 def inventory_list_view(request):
     """
-    Список остатков на всех точках (для админов и менеджеров)
+    Список остатков товаров на всех точках выдачи.
+    Включает фильтрацию по товару и точке.
     """
+
     # Получаем все товары и точки для фильтрации
     products = Product.objects.all()
     points = Point.objects.all()
@@ -106,6 +123,16 @@ def inventory_list_view(request):
 
 
 def inventory_detail_view(request, inventory_id):
+    """
+    Отображает детали конкретного инвентаря и историю его изменений.
+
+    Args:
+        inventory_id (int): ID записи PointInventory.
+
+    Returns:
+        HttpResponse: Отрендеренная страница с информацией об инвентаре.
+    """
+
     inventory = PointInventory.objects.get(id=inventory_id)
     movements = StockMovement.objects.filter(product_inventory=inventory).order_by('-timestamp')
     return render(request, 'inventory/inventory_detail.html', {
@@ -116,6 +143,10 @@ def inventory_detail_view(request, inventory_id):
 
 @permission_required
 def add_inventory(request):
+    """
+    Представление для добавления или обновления количества товара на точке выдачи.
+    """
+
     if request.method == 'POST':
         form = PointInventoryForm(request.POST)
         if form.is_valid():
@@ -150,11 +181,25 @@ def add_inventory(request):
 
 
 def stock_movement_history(request):
+    """
+    История операций перемещения товаров между точками.
+
+    Returns:
+        HttpResponse: Отрендеренная страница с историей.
+    """
+
     movements = StockMovement.objects.select_related('from_point', 'to_point').all().order_by('-timestamp')
     return render(request, 'inventory/stock_history.html', {'movements': movements})
 
 
 def low_stock_alert(request):
+    """
+    Отображает список товаров с низким уровнем запасов.
+
+    Returns:
+        HttpResponse: Отрендеренная страница с уведомлениями о низком уровне запасов.
+    """
+
     threshold = 5
     inventories = PointInventory.objects.filter(quantity__lt=threshold)
     return render(request, 'inventory/low_stock.html', {'inventories': inventories})
@@ -163,8 +208,12 @@ def low_stock_alert(request):
 @login_required
 def stock_history(request):
     """
-    История операций со складом
+    История операций со складом: списания, добавления и перемещения.
+
+    Returns:
+        HttpResponse: Отрендеренная страница с историей.
     """
+
     history = StockHistory.objects.all().order_by('-created_at')
 
     action_filter = request.GET.get('action')
@@ -187,8 +236,9 @@ def stock_history(request):
 @login_required
 def writeoff_inventory(request, inventory_id):
     """
-    Списание товара
+    Списание товара с точки выдачи.
     """
+
     try:
         inv = get_object_or_404(PointInventory, id=inventory_id)
 
@@ -207,7 +257,7 @@ def writeoff_inventory(request, inventory_id):
             # Сохраняем историю
             StockHistory.objects.create(
                 product=inv.product,
-                point=inv.point,
+                point_from=inv.point,
                 quantity=quantity,
                 action='writeoff',
                 comment=comment

@@ -10,6 +10,11 @@ from .models import Cart, CartItem, GuestCart
 
 
 def cart_view(request):
+    """
+    Отображает корзину пользователя.
+    Если пользователь неавторизован — отображает гостевую корзину.
+    """
+
     if not request.user.is_authenticated:
         return render(request, 'cart/guest_cart.html')
 
@@ -28,6 +33,16 @@ def cart_view(request):
 
 
 def add_to_cart(request, product_id):
+    """
+    Добавляет товар в корзину.
+
+    Args:
+        product_id (int): ID товара, который нужно добавить.
+
+    Returns:
+        redirect: Возвращает на предыдущую страницу или на детали товара.
+    """
+
     product = get_object_or_404(Product, id=product_id)
 
     # Получаем количество из формы
@@ -76,6 +91,16 @@ def add_to_cart(request, product_id):
 
 
 def remove_from_cart(request, product_id):
+    """
+    Удаляет товар из корзины.
+
+    Args:
+        product_id (int): ID товара, который нужно удалить.
+
+    Returns:
+        redirect: Возвращает на страницу корзины.
+    """
+
     if request.user.is_authenticated:
         cart = Cart.objects.get(user=request.user)
         cart.items.filter(product_id=product_id).delete()
@@ -89,6 +114,17 @@ def remove_from_cart(request, product_id):
 
 @login_required(login_url='users:login')
 def update_cart(request):
+    """
+    Обновляет количество товара в корзине после POST-запроса.
+
+    Args:
+        product_id (str): ID товара.
+        quantity (str): Новое количество товара.
+
+    Returns:
+        redirect: Возвращает на страницу корзины.
+    """
+
     if request.method == 'POST':
         product_id = request.POST.get('product_id')
         quantity_str = request.POST.get('quantity', '1')
@@ -133,6 +169,17 @@ def update_cart(request):
 
 @csrf_exempt
 def update_cart_ajax(request):
+    """
+    AJAX-метод для обновления количества товара в корзине.
+
+    Args:
+        quantity (str): Новое количество товара.
+        cart_item_id (str): ID позиции в корзине.
+
+    Returns:
+        JsonResponse: Содержит обновлённые данные о корзине.
+    """
+
     if request.method == 'POST':
         quantity = int(request.POST.get('quantity'))
         cart_item_id = request.POST.get('cart_item_id')
@@ -155,6 +202,16 @@ def update_cart_ajax(request):
 
 @csrf_exempt
 def remove_from_cart_ajax(request, product_id=None):
+    """
+    AJAX-метод для удаления товара из корзины.
+
+    Args:
+        product_id (int): ID товара, который нужно удалить.
+
+    Returns:
+        JsonResponse: Содержит информацию об успешном удалении.
+    """
+
     if request.method == 'POST':
         # Получаем product_id из POST данных, если он не передан через URL
         product_id = product_id or request.POST.get('product_id')
@@ -172,6 +229,14 @@ def remove_from_cart_ajax(request, product_id=None):
 
 
 def get_cart_items(request):
+    """
+    Вспомогательная функция для получения товаров в корзине.
+    Используется для шаблонов и API.
+
+    Returns:
+        QuerySet: Товары в корзине (CartItem или GuestCart).
+    """
+
     if request.user.is_authenticated:
         return CartItem.objects.filter(cart__user=request.user).select_related('product')
     else:
@@ -184,7 +249,9 @@ def get_cart_items(request):
 
 @login_required
 def merge_guest_cart(request):
-    from .models import Cart
+    """
+    Переносит товары из гостевой корзины в обычную при входе пользователя.
+    """
 
     # Получаем ключ текущей сессии
     session_key = request.session.session_key or ''

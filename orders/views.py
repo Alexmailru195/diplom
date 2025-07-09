@@ -23,8 +23,11 @@ from .models import Order, OrderItem
 @login_required
 def update_order_status(request, order_id):
     """
-    Обновление статуса заказа
+    Обновление статуса заказа.
+    Позволяет менеджерам и администраторам изменять статус заказа.
+    При отмене заказа товар возвращается на склад и записывается в историю.
     """
+
     try:
         order = get_object_or_404(Order, id=order_id)
     except Exception:
@@ -52,10 +55,12 @@ def update_order_status(request, order_id):
     if request.method == 'POST':
         new_status = request.POST.get('status')
         valid_statuses = [key for key, _ in Order.STATUS_CHOICES]
+
         if new_status in valid_statuses:
             old_status = order.status
             order.status = new_status
             order.save()
+
             # Отправляем уведомление
             send_order_status_email(order, order.user)
 
@@ -79,7 +84,6 @@ def update_order_status(request, order_id):
                                     action='return',
                                     comment=f"Возвращено после отмены заказа #{order.id}"
                                 )
-
                             elif order.delivery_type == 'courier':
                                 warehouse = Point.objects.filter(is_warehouse=True).first()
                                 if not warehouse:
@@ -103,6 +107,7 @@ def update_order_status(request, order_id):
                     return redirect('orders:order_detail', order_id=order.id)
 
             messages.success(request, f"Статус заказа изменён на {order.get_status_display()}")
+
         else:
             messages.error(request, "Неверный статус")
 
@@ -112,13 +117,17 @@ def update_order_status(request, order_id):
 @login_required
 def order_list_view(request):
     """
-    Список всех заказов (для менеджеров и админов)
+    Список всех заказов (для менеджеров и админов).
+    Позволяет фильтровать заказы по статусу.
     """
+
     if request.user.is_superuser or request.user.is_staff:
         status_filter = request.GET.get('status')
         orders = Order.objects.all().order_by('-created_at')
+
         if status_filter:
             orders = orders.filter(status=status_filter)
+
         return render(request, 'orders/admin_order_list.html', {
             'orders': orders,
             'STATUS_CHOICES': [choice for choice in Order.STATUS_CHOICES]
@@ -130,13 +139,16 @@ def order_list_view(request):
 @login_required
 def all_orders_view(request):
     """
-    Список всех заказов (для админов и менеджеров)
+    Список всех заказов (для админов и менеджеров).
+    Позволяет фильтровать заказы по статусу.
     """
+
     if not (request.user.is_superuser or request.user.is_staff):
         return redirect('orders:user_orders')
 
     status_filter = request.GET.get('status')
     orders = Order.objects.all().order_by('-created_at')
+
     if status_filter:
         orders = orders.filter(status=status_filter)
 
@@ -149,10 +161,13 @@ def all_orders_view(request):
 @login_required
 def user_orders_view(request):
     """
-    Список заказов текущего пользователя (мои заказы)
+    Список заказов текущего пользователя (мои заказы).
+    Позволяет фильтровать заказы по статусу.
     """
+
     status_filter = request.GET.get('status')
     orders = Order.objects.filter(user=request.user).order_by('-created_at')
+
     if status_filter:
         orders = orders.filter(status=status_filter)
 
@@ -164,6 +179,11 @@ def user_orders_view(request):
 
 @login_required
 def order_detail_view(request, order_id):
+    """
+    Отображает детали конкретного заказа.
+    Проверяет права доступа перед просмотром.
+    """
+
     try:
         order = Order.objects.get(id=order_id)
     except Order.DoesNotExist:
@@ -173,6 +193,7 @@ def order_detail_view(request, order_id):
     is_owner = request.user == order.user
     is_admin = request.user.is_superuser
     is_manager = request.user.is_staff
+
     if not (is_admin or is_manager or is_owner):
         raise PermissionDenied("У вас нет прав на просмотр этого заказа")
 
@@ -190,6 +211,11 @@ def order_detail_view(request, order_id):
 
 @login_required
 def order_confirm_view(request):
+    """
+    Представление для оформления заказа.
+    Позволяет пользователю заполнить данные и создать заказ.
+    """
+
     cart_items = CartItem.objects.filter(cart__user=request.user).select_related('product')
     if not cart_items.exists():
         messages.warning(request, "Корзина пуста")
@@ -257,6 +283,7 @@ def order_confirm_view(request):
                         quantity_needed = cart_item.quantity
                         remaining_quantity = quantity_needed
                         warehouse = Point.objects.filter(is_warehouse=True).first()
+
                         if not warehouse:
                             raise Exception("Нет доступного склада")
 
@@ -352,16 +379,19 @@ def order_confirm_view(request):
 @login_required
 def profile_orders_view(request):
     """
-    Отображение заказов в профиле
+    Отображает список заказов в профиле пользователя.
     """
+
     return redirect('orders:user_orders')
 
 
 @login_required
 def payment_confirmation(request, order_id):
     """
-    Подтверждение оплаты (эмуляция)
+    Подтверждение оплаты (эмуляция).
+    Позволяет пользователю подтвердить оплату заказа.
     """
+
     try:
         order = Order.objects.get(id=order_id, user=request.user)
     except Order.DoesNotExist:
@@ -379,6 +409,7 @@ def payment_confirmation(request, order_id):
             order.status = 'accepted'
             order.payment_status = 'paid'
             order.save()
+            send_order_status_email(order, order.user)
             messages.success(request, "Оплата прошла успешно! Ваш заказ принят к выполнению.")
         else:
             messages.error(request, "Неверный формат номера карты.")
@@ -391,8 +422,10 @@ def payment_confirmation(request, order_id):
 @login_required
 def payment_process(request, order_id):
     """
-    Эмуляция процесса оплаты
+    Эмуляция процесса оплаты.
+    Позволяет пользователю эмулировать оплату через GET или POST запрос.
     """
+
     try:
         order = get_object_or_404(Order, id=order_id, user=request.user)
     except Exception:
@@ -406,6 +439,7 @@ def payment_process(request, order_id):
             order.status = 'accepted'
             order.payment_status = 'paid'
             order.save()
+            send_order_status_email(order, order.user)
             messages.success(request, "Оплата прошла успешно! Ваш заказ принят к выполнению.")
         else:
             messages.error(request, "Неверный формат номера карты.")
@@ -414,16 +448,28 @@ def payment_process(request, order_id):
         order.status = 'accepted'
         order.payment_status = 'paid'
         order.save()
+        send_order_status_email(order, order.user)
         messages.success(request, "Оплата прошла успешно! Ваш заказ принят к выполнению.")
 
-    return redirect('orders:order_detail', order_id=order_id)
+    return redirect('orders:order_detail', order_id=order.id)
 
 
 def calculate_delivery_cost(order):
+    """
+    Рассчитывает стоимость доставки для заказа.
+    Применяется только если тип доставки — курьер.
+
+    Args:
+        order (Order): Объект заказа.
+
+    Returns:
+        float: Стоимость доставки.
+    """
+
     if order.delivery_type != 'courier':
         return 0
 
     zone = DeliveryZone.objects.first()
-    distance = 5
+    distance = 5  # Примерное расстояние до адреса
     cost = zone.base_price + (zone.price_per_km * distance)
     return round(cost, 2)

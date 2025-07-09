@@ -7,6 +7,11 @@ from products.models import Product
 
 
 class PointInventory(models.Model):
+    """
+    Модель для хранения информации об остатках товаров на конкретной точке.
+    Каждый товар может быть представлен только один раз на одной точке.
+    """
+
     product = models.ForeignKey(
         'products.Product',
         on_delete=models.CASCADE,
@@ -25,7 +30,6 @@ class PointInventory(models.Model):
             prev = PointInventory.objects.get(pk=self.pk)
             if self.quantity > prev.quantity:
                 added = self.quantity - prev.quantity
-                # Записываем только добавление
                 StockHistory.objects.create(
                     product=self.product,
                     point_to=self.point,
@@ -35,7 +39,6 @@ class PointInventory(models.Model):
                 )
             elif self.quantity < prev.quantity:
                 removed = prev.quantity - self.quantity
-                # Записываем только списание
                 StockHistory.objects.create(
                     product=self.product,
                     point_from=self.point,
@@ -64,6 +67,11 @@ class PointInventory(models.Model):
 
 
 class StockMovement(models.Model):
+    """
+    Модель для отслеживания перемещений товаров между точками.
+    Включает тип перемещения (приход, расход, перемещение), количество и временные метки.
+    """
+
     MOVEMENT_TYPES = (
         ('in', 'Приход'),
         ('out', 'Расход'),
@@ -102,6 +110,11 @@ class StockMovement(models.Model):
 
 
 class StockHistory(models.Model):
+    """
+    История изменений инвентаря.
+    Следит за добавлениями, списаниями и перемещениями товаров между точками.
+    """
+
     ACTION_CHOICES = (
         ('sale', 'Списание'),
         ('move', 'Перемещение'),

@@ -67,7 +67,6 @@ class CreateOrderSerializer(serializers.Serializer):
         Этот метод нужен, чтобы Serializer мог работать с .save()
         Реальная логика оформления заказа находится в ViewSet или utils.py
         """
-        # Реальную реализацию делаем в ViewSet
         return validated_data
 
     def update(self, instance, validated_data):

@@ -6,6 +6,12 @@ from orders.models import Order
 
 
 class OrderConfirmForm(forms.Form):
+    """
+    Форма для подтверждения заказа.
+    Включает поля для выбора типа доставки, адреса, пункта самовывоза, даты и времени получения,
+    а также контактные данные клиента.
+    """
+
     DELIVERY_CHOICES = (
         ('courier', 'Доставка'),
         ('pickup', 'Самовывоз'),
@@ -13,7 +19,7 @@ class OrderConfirmForm(forms.Form):
 
     PAYMENT_CHOICES = (
         ('online', 'Онлайн'),
-        ('cash', 'Наличные при получении'),
+        ('cash', 'Наличные/безналичные при получении'),
     )
 
     TIME_SLOT_CHOICES = (
@@ -78,6 +84,13 @@ class OrderConfirmForm(forms.Form):
     payment_type = forms.ChoiceField(choices=PAYMENT_CHOICES)
 
     def clean(self):
+        """
+        Проверяет обязательные поля формы.
+        Если выбран самовывоз, пункт самовывоза должен быть указан.
+
+        Returns:
+            dict: Очищенные данные формы.
+        """
         cleaned_data = super().clean()
         delivery_type = cleaned_data.get('delivery_type')
         pickup_point = cleaned_data.get('pickup_point')

@@ -5,6 +5,11 @@ from .models import Order, OrderItem
 
 
 class OrderItemInline(admin.TabularInline):
+    """
+    Inline-админка для отображения позиций заказа (OrderItem) внутри модели Order.
+    Позволяет просматривать товары и их стоимость без возможности редактирования.
+    """
+
     model = OrderItem
     extra = 0
     readonly_fields = ('product', 'quantity', 'price', 'total')
@@ -17,6 +22,12 @@ class OrderItemInline(admin.TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
+    """
+    Административная панель для управления моделью Order.
+    Отображает список заказов, фильтрацию по статусу, типу доставки и оплаты,
+    а также ограничивает доступ к заказам только менеджерам или администраторам.
+    """
+
     list_display = (
         'id',
         'user',
@@ -48,8 +59,15 @@ class OrderAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         """
-        Показываем только те заказы, которые назначены менеджеру точки.
-        Если пользователь — суперпользователь, показываем все.
+        Возвращает набор заказов, который будет виден в административной панели.
+        Для суперпользователей — все заказы. Для менеджеров — только те заказы,
+        которые назначены им.
+
+        Args:
+            request: Объект запроса Django.
+
+        Returns:
+            QuerySet: Список заказов, доступных пользователю.
         """
         qs = super().get_queryset(request)
         if request.user.is_superuser:
@@ -59,7 +77,15 @@ class OrderAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         """
-        Позволяем редактировать заказ только его менеджеру или администратору.
+        Определяет, имеет ли пользователь право на изменение заказа.
+        Право предоставляется только менеджеру заказа или администратору.
+
+        Args:
+            request: Объект запроса Django.
+            obj: Объект заказа.
+
+        Returns:
+            bool: True, если у пользователя есть права на изменение.
         """
         if not request.user.is_superuser and obj and obj.manager != request.user:
             return False
@@ -67,7 +93,15 @@ class OrderAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         """
-        Позволяем удалять заказ только его менеджеру или администратору.
+        Определяет, имеет ли пользователь право на удаление заказа.
+        Право предоставляется только менеджеру заказа или администратору.
+
+        Args:
+            request: Объект запроса Django.
+            obj: Объект заказа.
+
+        Returns:
+            bool: True, если у пользователя есть права на удаление.
         """
         if not request.user.is_superuser and obj and obj.manager != request.user:
             return False
@@ -76,6 +110,11 @@ class OrderAdmin(admin.ModelAdmin):
 
 @admin.register(OrderItem)
 class OrderItemAdmin(admin.ModelAdmin):
+    """
+    Административная панель для управления моделью OrderItem.
+    Отображает товары в заказе, их количество, цену и общую сумму.
+    """
+
     list_display = ('order', 'product', 'quantity', 'price', 'total')
     list_filter = ('order', 'product')
     search_fields = ('order__id', 'product__name')
