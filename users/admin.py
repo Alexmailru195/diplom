@@ -6,6 +6,11 @@ from .models import User
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
+    """
+    Административная панель для управления моделью пользователей.
+    Позволяет просматривать, фильтровать и искать пользователей по имени, email, роли и статусу.
+    """
+
     list_display = ('username', 'email', 'first_name', 'last_name', 'role', 'is_active')
     list_filter = ('role', 'is_active', 'date_joined')
     search_fields = ('username', 'email', 'first_name', 'last_name')
@@ -34,6 +39,10 @@ class UserAdmin(admin.ModelAdmin):
     readonly_fields = ('date_joined', 'last_login')
 
     def get_form(self, request, obj=None, **kwargs):
+        """
+        Возвращает форму для создания или редактирования пользователя.
+        При создании нового пользователя поле 'role' становится обязательным.
+        """
         form = super().get_form(request, obj, **kwargs)
 
         if obj is None:  # При создании

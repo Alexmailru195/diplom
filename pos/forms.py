@@ -5,6 +5,11 @@ from .models import Point
 
 
 class PointForm(forms.ModelForm):
+    """
+    Форма для создания и редактирования модели Point.
+    Включает поля: имя, адрес, телефон и статус активности.
+    """
+
     class Meta:
         model = Point
         fields = ['name', 'address', 'phone', 'is_active']

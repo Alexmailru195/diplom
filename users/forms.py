@@ -11,8 +11,11 @@ from .models import User
 
 class RegisterForm(UserCreationForm):
     """
-    Форма регистрации пользователя
+    Форма регистрации пользователя.
+    Позволяет заполнить поля: логин, email, имя, фамилия и телефон.
+    Выполняет проверку на уникальность email и сложность пароля.
     """
+
     email = forms.EmailField(
         label='Email',
         widget=forms.EmailInput(attrs={'placeholder': 'Email'}),
@@ -40,12 +43,33 @@ class RegisterForm(UserCreationForm):
     )
 
     def clean_email(self):
+        """
+        Проверяет, не используется ли email уже другим пользователем.
+
+        Raises:
+            ValidationError: Если email уже существует.
+
+        Returns:
+            str: Валидированный email.
+        """
         email = self.cleaned_data.get('email')
         if User.objects.filter(email=email).exists():
             raise ValidationError("Этот email уже зарегистрирован.")
         return email
 
     def clean_password1(self):
+        """
+        Проверяет сложность пароля. Пароль должен быть:
+        - Не короче 8 символов
+        - Содержать хотя бы одну цифру
+        - Содержать хотя бы одну строчную букву
+
+        Raises:
+            ValidationError: Если пароль не соответствует требованиям.
+
+        Returns:
+            str: Валидированный пароль.
+        """
         password1 = self.cleaned_data.get('password1')
         if not password1:
             return password1
@@ -65,6 +89,15 @@ class RegisterForm(UserCreationForm):
         return password1
 
     def clean_password2(self):
+        """
+        Проверяет совпадение двух введённых паролей.
+
+        Raises:
+            ValidationError: Если пароли не совпадают.
+
+        Returns:
+            str: Второй пароль.
+        """
         password1 = self.cleaned_data.get('password1')
         password2 = self.cleaned_data.get('password2')
 
@@ -79,8 +112,10 @@ class RegisterForm(UserCreationForm):
 
 class LoginForm(AuthenticationForm):
     """
-    Форма входа пользователя
+    Форма для входа пользователя.
+    Позволяет ввести имя пользователя и пароль.
     """
+
     username = forms.CharField(
         label='Имя пользователя',
         widget=forms.TextInput(attrs={'placeholder': 'Имя пользователя'})
@@ -94,8 +129,11 @@ class LoginForm(AuthenticationForm):
 
 class ProfileForm(forms.ModelForm):
     """
-    Форма редактирования профиля
+    Форма редактирования профиля пользователя.
+    Позволяет изменять имя, фамилию и телефон.
+    Email и логин отображаются, но не редактируются.
     """
+
     username = forms.CharField(disabled=True, label='Имя пользователя')
     email = forms.EmailField(label='Email', disabled=True)
     first_name = forms.CharField(label='Имя', required=False)
@@ -109,8 +147,10 @@ class ProfileForm(forms.ModelForm):
 
 class ChangePasswordForm(forms.Form):
     """
-    Форма смены пароля
+    Форма смены пароля.
+    Позволяет ввести старый и новый пароль, а также подтвердить новый.
     """
+
     old_password = forms.CharField(
         label='Старый пароль',
         strip=False,
@@ -132,12 +172,30 @@ class ChangePasswordForm(forms.Form):
         super().__init__(*args, **kwargs)
 
     def clean_old_password(self):
+        """
+        Проверяет правильность старого пароля.
+
+        Raises:
+            ValidationError: Если старый пароль неверен.
+
+        Returns:
+            str: Старый пароль.
+        """
         old_password = self.cleaned_data.get('old_password')
         if not self.user.check_password(old_password):
             raise forms.ValidationError("Старый пароль неверен")
         return old_password
 
     def clean_new_password2(self):
+        """
+        Проверяет совпадение новых паролей.
+
+        Raises:
+            ValidationError: Если пароли не совпадают.
+
+        Returns:
+            str: Новый подтверждённый пароль.
+        """
         new_password1 = self.cleaned_data.get('new_password1')
         new_password2 = self.cleaned_data.get('new_password2')
 
@@ -147,6 +205,15 @@ class ChangePasswordForm(forms.Form):
         return new_password2
 
     def save(self, commit=True):
+        """
+        Сохраняет новый пароль для пользователя.
+
+        Args:
+            commit (bool): Если True — сохраняет изменения в БД.
+
+        Returns:
+            User: Обновлённый объект пользователя.
+        """
         user = self.user
         user.set_password(self.cleaned_data['new_password1'])
         if commit:
@@ -156,8 +223,10 @@ class ChangePasswordForm(forms.Form):
 
 class ProfileUpdateForm(forms.ModelForm):
     """
-    Форма для обновления данных профиля
+    Форма для обновления данных профиля.
+    Позволяет изменять имя, фамилию и телефон.
     """
+
     first_name = forms.CharField(label="Имя", required=False)
     last_name = forms.CharField(label="Фамилия", required=False)
     phone = forms.CharField(label="Телефон", required=False)
@@ -167,12 +236,28 @@ class ProfileUpdateForm(forms.ModelForm):
         fields = ['first_name', 'last_name', 'phone']
 
     def clean_email(self):
+        """
+        Проверяет формат email при обновлении профиля.
+
+        Raises:
+            ValidationError: Если email некорректного формата.
+
+        Returns:
+            str: Валидированный email.
+        """
         email = self.cleaned_data.get('email')
         if not re.match(r'^[\w.-]+@[\w.-]+\.\w+$', email):
             raise forms.ValidationError("Email должен быть в корректном формате")
         return email
 
     def clean_phone(self):
+        """
+        Проверяет и форматирует номер телефона.
+        Номер должен быть российским (+7 ...) и содержать 10 или 11 цифр.
+
+        Returns:
+            str: Отформатированный номер телефона.
+        """
         phone = self.cleaned_data.get('phone')
         if not phone:
             return phone
@@ -201,16 +286,33 @@ class ProfileUpdateForm(forms.ModelForm):
 
 class CustomUserChangeForm(UserChangeForm):
     """
-    Кастомная форма изменения данных пользователя
+    Кастомная форма изменения данных пользователя.
+    Используется в административной панели Django.
     """
 
     def clean_email(self):
+        """
+        Проверяет формат email.
+
+        Raises:
+            ValidationError: Если email некорректного формата.
+
+        Returns:
+            str: Валидированный email.
+        """
         email = self.cleaned_data.get('email')
         if not re.match(r'^[\w.-]+@[\w.-]+\.\w+$', email):
             raise forms.ValidationError("Email должен быть в корректном формате")
         return email
 
     def clean_phone(self):
+        """
+        Проверяет и форматирует номер телефона.
+        Номер должен быть российским (+7 ...) и содержать 10 или 11 цифр.
+
+        Returns:
+            str: Отформатированный номер телефона.
+        """
         phone = self.cleaned_data.get('phone')
         if not phone:
             return phone

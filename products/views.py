@@ -10,6 +10,12 @@ from .models import Product, Category, ProductImage
 
 
 def product_list_view(request):
+    """
+    Отображает список всех товаров.
+    Позволяет фильтровать товары по категории и поисковому запросу,
+    а также сортировать их по цене или названию.
+    """
+
     query = request.GET.get('q', '')
     category_id = request.GET.get('category')
     sort_by = request.GET.get('sort', 'default')
@@ -57,7 +63,14 @@ def product_list_view(request):
 
 def product_detail_view(request, pk):
     """
-    Детали товара: описание, атрибуты, изображения
+    Отображает детали конкретного товара.
+    Включает описание, атрибуты, изображения и информацию об остатках на складах.
+
+    Args:
+        pk (int): ID товара.
+
+    Returns:
+        HttpResponse: Отрендеренная страница с информацией о товаре.
     """
     product = get_object_or_404(Product, pk=pk, is_active=True)
     attributes = product.attributes.all()
@@ -77,7 +90,13 @@ def product_detail_view(request, pk):
 
 def category_product_list_view(request, category_pk):
     """
-    Список товаров в определённой категории
+    Отображает список товаров в определённой категории.
+
+    Args:
+        category_pk (int): ID категории.
+
+    Returns:
+        HttpResponse: Отрендеренная страница с товарами категории.
     """
     category = get_object_or_404(Category, pk=category_pk)
     products = Product.objects.filter(category=category, is_active=True)
@@ -93,6 +112,10 @@ def category_product_list_view(request, category_pk):
 
 
 def create_category(request):
+    """
+    Представление для создания новой категории.
+    Использует форму CategoryForm и отправляет уведомления при успешном сохранении.
+    """
     if request.method == 'POST':
         form = CategoryForm(request.POST)
         if form.is_valid():
@@ -108,6 +131,10 @@ def create_category(request):
 
 
 def create_product(request):
+    """
+    Представление для создания нового товара.
+    Позволяет заполнить данные о товаре и загрузить главное изображение.
+    """
     product_form = ProductForm()
     image_form = ProductImageForm()
 
@@ -135,11 +162,23 @@ def create_product(request):
 
 
 def category_list_view(request):
+    """
+    Отображает список всех категорий.
+    """
     categories = Category.objects.all()
     return render(request, 'products/category_list.html', {'categories': categories})
 
 
 def category_detail_view(request, category_id):
+    """
+    Отображает товары в выбранной категории.
+
+    Args:
+        category_id (int): ID категории.
+
+    Returns:
+        HttpResponse: Отрендеренная страница с товарами категории.
+    """
     category = get_object_or_404(Category, id=category_id)
     products = Product.objects.filter(category=category)
     return render(request, 'products/product_list.html', {
@@ -149,6 +188,10 @@ def category_detail_view(request, category_id):
 
 
 def search_view(request):
+    """
+    Поиск товаров по имени.
+    Возвращает результаты поиска и отображает их на странице списка товаров.
+    """
     query = request.GET.get('q', '')
     products = []
 

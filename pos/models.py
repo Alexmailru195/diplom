@@ -6,6 +6,12 @@ from django import forms
 
 
 class Point(models.Model):
+    """
+    Модель для представления пункта выдачи (точки продаж).
+    Содержит информацию о названии, адресе, графика работы, координатах,
+    телефоне, статусах активности и возможности самовывоза.
+    """
+
     name = models.CharField("Название точки", max_length=100)
     address = models.TextField("Адрес")
     work_schedule = models.CharField(max_length=500, default="")
@@ -32,6 +38,11 @@ class Point(models.Model):
 
 
 class PointForm(forms.ModelForm):
+    """
+    Форма для создания или редактирования модели Point.
+    Включает поля: название, адрес, телефон и статус активности.
+    """
+
     class Meta:
         model = Point
         fields = ['name', 'address', 'phone', 'is_active']

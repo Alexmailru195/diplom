@@ -4,6 +4,12 @@ from django.db import models
 
 
 class Category(models.Model):
+    """
+    Модель категории товаров.
+    Категории могут быть вложенными (через поле parent).
+    Позволяет группировать товары и отображать их по категориям.
+    """
+
     name = models.CharField("Название", max_length=100)
     parent = models.ForeignKey(
         'self',
@@ -18,11 +24,18 @@ class Category(models.Model):
         return self.get_full_name()
 
     def get_full_name(self):
+        """Возвращает полное имя категории с учётом родительской категории."""
         if self.parent:
             return f"{self.parent.get_full_name()} > {self.name}"
         return self.name
 
     def get_all_products(self):
+        """
+        Возвращает все товары, принадлежащие данной категории и её подкатегориям.
+
+        Returns:
+            QuerySet: Список товаров.
+        """
         from .models import Product
 
         products = Product.objects.filter(category=self)
@@ -30,7 +43,12 @@ class Category(models.Model):
         return products.distinct()
 
     def get_product_count(self):
-        """Получить количество товаров в текущей категории и её подкатегориях"""
+        """
+        Возвращает количество товаров в текущей категории и её подкатегориях.
+
+        Returns:
+            int: Общее количество товаров.
+        """
         return self.get_all_products().count()
 
     class Meta:
@@ -40,6 +58,11 @@ class Category(models.Model):
 
 
 class Product(models.Model):
+    """
+    Модель товара.
+    Хранит информацию о названии, описании, цене, статусе активности и популярности.
+    """
+
     name = models.CharField("Название", max_length=255)
     description = models.TextField("Описание")
     price = models.DecimalField("Цена", max_digits=10, decimal_places=2)
@@ -64,6 +87,11 @@ class Product(models.Model):
 
 
 class ProductAttribute(models.Model):
+    """
+    Модель атрибута товара.
+    Используется для хранения общих характеристик, которые могут применяться к разным товарам.
+    """
+
     name = models.CharField("Название атрибута", max_length=255)
 
     def __str__(self):
@@ -75,6 +103,11 @@ class ProductAttribute(models.Model):
 
 
 class ProductAttributeValue(models.Model):
+    """
+    Значение атрибута конкретного товара.
+    Связывает товар с его атрибутом и указывает значение этого атрибута.
+    """
+
     product = models.ForeignKey(
         Product,
         on_delete=models.CASCADE,
@@ -95,6 +128,12 @@ class ProductAttributeValue(models.Model):
 
 
 class ProductImage(models.Model):
+    """
+    Модель изображений товаров.
+    Позволяет добавлять несколько изображений к одному товару.
+    Только одно изображение может быть основным.
+    """
+
     product = models.ForeignKey(
         Product,
         on_delete=models.CASCADE,
@@ -112,7 +151,10 @@ class ProductImage(models.Model):
         verbose_name_plural = "Изображения товаров"
 
     def save(self, *args, **kwargs):
-        # Убедимся, что только одно изображение может быть основным у товара
+        """
+        Перед сохранением убедиться, что только одно изображение может быть основным у одного товара.
+        Если текущее изображение помечено как основное, остальные становятся неосновными.
+        """
         if self.is_main:
             ProductImage.objects.filter(product=self.product).exclude(pk=self.pk).update(is_main=False)
         super().save(*args, **kwargs)

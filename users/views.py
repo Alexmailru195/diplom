@@ -21,7 +21,33 @@ from .forms import RegisterForm, LoginForm, ChangePasswordForm, ProfileUpdateFor
 User = get_user_model()
 
 
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth import login, logout, update_session_auth_hash, get_user_model
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import SetPasswordForm
+from django.contrib.auth.tokens import default_token_generator
+from django.contrib.auth.views import PasswordResetConfirmView, LoginView
+from django.core.mail import send_mail
+from django.shortcuts import render, redirect
+from django.template.loader import render_to_string
+from django.urls import reverse, reverse_lazy
+from django.utils.encoding import force_bytes
+from django.utils.html import strip_tags
+from django.utils.http import urlsafe_base64_encode
+
+from cart.views import merge_guest_cart
+from .forms import RegisterForm, LoginForm, ChangePasswordForm, ProfileUpdateForm
+
+User = get_user_model()
+
+
 def password_reset_view(request):
+    """
+    Представление для сброса пароля.
+    Отправляет ссылку на email пользователя для установки нового пароля.
+    """
+
     if request.method == 'POST':
         username = request.POST.get('username')
         try:
@@ -59,6 +85,11 @@ def password_reset_view(request):
 
 
 def register_view(request):
+    """
+    Представление для регистрации новых пользователей.
+    После успешной регистрации объединяет гостевую корзину с корзиной пользователя.
+    """
+
     if request.user.is_authenticated:
         return redirect('products:product_list')
 
@@ -104,8 +135,10 @@ def register_view(request):
 
 def login_view(request):
     """
-    Вход пользователя
+    Представление для входа существующих пользователей.
+    При входе объединяет гостевую корзину с пользовательской.
     """
+
     if request.method == 'POST':
         form = LoginForm(data=request.POST)
         if form.is_valid():
@@ -129,8 +162,9 @@ def login_view(request):
 
 def logout_view(request):
     """
-    Выход из аккаунта
+    Представление для выхода из аккаунта.
     """
+
     logout(request)
     messages.info(request, "Вы вышли из аккаунта")
     return redirect('home')
@@ -139,8 +173,9 @@ def logout_view(request):
 @login_required
 def change_password_view(request):
     """
-    Смена пароля
+    Представление для смены пароля текущего пользователя.
     """
+
     if request.method == 'POST':
         password_form = ChangePasswordForm(user=request.user, data=request.POST)
         if password_form.is_valid():
@@ -157,6 +192,11 @@ def change_password_view(request):
 
 
 class CustomPasswordResetConfirmView(PasswordResetConfirmView):
+    """
+    Кастомная страница подтверждения сброса пароля.
+    Использует стандартный класс PasswordResetConfirmView DRF.
+    """
+
     template_name = 'users/password_reset_confirm.html'
     form_class = SetPasswordForm
     success_url = reverse_lazy('users:login')
@@ -165,8 +205,9 @@ class CustomPasswordResetConfirmView(PasswordResetConfirmView):
 @login_required
 def profile_view(request):
     """
-    Отображение и редактирование профиля
+    Представление для просмотра и редактирования профиля пользователя.
     """
+
     if request.method == 'POST':
         form = ProfileUpdateForm(request.POST, instance=request.user)
         if form.is_valid():
@@ -185,10 +226,17 @@ def profile_view(request):
 
 
 class CustomLoginView(LoginView):
+    """
+    Кастомная страница входа.
+    Переопределяет поведение после успешного входа (объединение корзин).
+    """
+
     template_name = 'users/login.html'
     redirect_authenticated_user = True
 
     def get_success_url(self):
-        # Объединяем корзины после входа
+        """
+        Перенаправляет пользователя после входа и объединяет корзины.
+        """
         merge_guest_cart(self.request)
         return super().get_success_url()
